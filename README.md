@@ -16,8 +16,8 @@ Our FLGo is a strong and reusable experimental platform for research on federate
 
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 <center class="half">
-<img src="https://github.com/WwZzz/easyFL/assets/20792079/0de90155-0adc-4d88-85df-23b4e8f7dee2" width=200/>
-<img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=180/>
+<img src="https://github.com/WwZzz/easyFL/assets/20792079/8686d502-80f3-4ff2-945e-692ca55b754f" width=180/>
+<img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=200/>
 </center>
 
 
@@ -60,16 +60,14 @@ pip install --upgrade pip
 ```
 import flgo
 import os
-
+import flgo.benchmark.mnist_classification as mnist
+import flgo.benchmark.partition as fbp
 # the target path of the task
 task_path = './my_first_task'
 
-# create task configuration
-task_config = {'benchmark':{'name': 'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner', 'para':{'num_clients':100}}}
-
 # generate the task if the task doesn't exist
 if not os.path.exists(task_path):
-    flgo.gen_task(task_config, task_path)
+    flgo.gen_task_by_(mnist, fbp.IIDPartitioner(num_clients=100), task_path)
 ```
 *After running the codes above, a federated dataset is successfully created in the task_path. The visualization of the task is stored in **task_path/res.png** as below*
 
