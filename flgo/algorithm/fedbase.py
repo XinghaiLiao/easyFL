@@ -6,6 +6,7 @@ from typing import Any
 from tqdm import tqdm
 import torch
 import torch.multiprocessing as mp
+import multiprocessing.dummy as dmp
 import numpy as np
 import flgo.benchmark.base
 from flgo.utils import fmodule
@@ -314,7 +315,11 @@ class BasicServer(BasicParty):
         else:
             self.model = self.model.to(torch.device('cpu'))
             # computing in parallel with torch.multiprocessing
-            pool = mp.Pool(self.num_parallels)
+            paratype = self.option.get('parallel_type', None)
+            if paratype is not None and paratype=='t':
+                pool = dmp.Pool(self.num_parallels)
+            else:
+                pool = mp.Pool(self.num_parallels)
             for client_id in communicate_clients:
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
@@ -332,33 +337,6 @@ class BasicServer(BasicParty):
                             pkg[k] = v.to(self.device)
                         except:
                             continue
-            # self.model = self.model.to(torch.device('cpu'))
-            #
-            # def worker(args):
-            #     print(os.getpid())
-            #     print(id(self.clients[args[0]]))
-            #     return self.communicate_with(*args), args[0]
-            #
-            # pool = ThreadPoolExecutor(self.num_parallels)
-            # packages_received_from_clients = []
-            # for client_id in communicate_clients:
-            #     server_pkg = self.pack(client_id, mtype)
-            #     server_pkg['__mtype__'] = mtype
-            #     self.clients[client_id].update_device(self.gv.apply_for_device())
-            #     args = (self.clients[client_id].id, server_pkg)
-            #     packages_received_from_clients.append(pool.submit(worker, args))
-            # wait(packages_received_from_clients, return_when=ALL_COMPLETED)
-            # packages_received_from_clients = [v.result() for v in packages_received_from_clients]
-            # packages_received_from_clients = {v[1]:v[0] for v in packages_received_from_clients}
-            # packages_received_from_clients = [packages_received_from_clients[k] for k in communicate_clients]
-            # self.model = self.model.to(self.device)
-            # for pkg in packages_received_from_clients:
-            #     for k,v in pkg.items():
-            #         if hasattr(v, 'to'):
-            #             try:
-            #                 pkg[k] = v.to(self.device)
-            #             except:
-            #                 continue
         self.gv.logger.time_end("Training")
         for i, client_id in enumerate(communicate_clients): received_package_buffer[client_id] = packages_received_from_clients[i]
         packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if
