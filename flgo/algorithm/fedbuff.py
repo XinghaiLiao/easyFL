@@ -6,7 +6,7 @@ import copy
 
 class Server(AsyncServer):
     def initialize(self):
-        self.init_algo_para({'period': 1, 'buffer_ratio': 0.2, 'eta_g': 1.0})
+        self.init_algo_para({'buffer_ratio': 0.2, 'eta': 1.0, 'period': 1,})
         self.tolerance_for_latency = 1000
         self.updated = True
         self.buffer = []
@@ -37,7 +37,7 @@ class Server(AsyncServer):
                 updates_bf = [b[0] for b in self.buffer]
                 weights_bf = [(1+self.current_round-ctau)**(-0.5) for ctau in taus_bf]
                 model_delta = fmodule._model_average(updates_bf, weights_bf)/len(self.buffer)
-                self.model = self.model + self.eta_g * model_delta
+                self.model = self.model + self.eta * model_delta
                 # clear buffer
                 self.buffer = []
                 return True
