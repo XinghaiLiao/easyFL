@@ -45,3 +45,43 @@ We also provide some preset Simulator like flgo.simulator.DefaultSimulator and f
 """
 from flgo.simulator.default_simulator import Simulator as DefaultSimulator
 from flgo.simulator.phone_simulator import Simulator as PhoneSimulator
+from flgo.simulator.base import BasicSimulator
+import numpy as np
+import random
+
+class ResponsivenessExampleSimulator(BasicSimulator):
+    def initialize(self):
+        self.client_time_response = {cid: np.random.randint(5, 1000) for cid in self.clients}
+        self.set_variable(list(self.clients.keys()), 'latency', list(self.client_time_response.values()))
+
+    def update_client_responsiveness(self, client_ids):
+        latency = [self.client_time_response[cid] for cid in client_ids]
+        self.set_variable(client_ids, 'latency', latency)
+
+class CompletenessExampleSimulator(BasicSimulator):
+    def update_client_completeness(self, client_ids):
+        if not hasattr(self, '_my_working_amount'):
+            rs = self.random_module.normal(1.0, 1.0, len(self.clients))
+            rs = rs.clip(0.01, 2)
+            self._my_working_amount = {cid:max(int(r*self.clients[cid].num_steps),1) for  cid,r in zip(self.clients, rs)}
+        working_amount = [self._my_working_amount[cid] for cid in client_ids]
+        self.set_variable(client_ids, 'working_amount', working_amount)
+
+class AvailabilityExampleSimulator(BasicSimulator):
+    def update_client_availability(self):
+        if self.gv.clock.current_time==0:
+            self.set_variable(self.all_clients, 'prob_available', [1.0 for _ in self.clients])
+            self.set_variable(self.all_clients, 'prob_unavailable', [0.0 for _ in self.clients])
+            return
+        pa = [0.1 for _ in self.clients]
+        pua = [0.1 for _ in self.clients]
+        self.set_variable(self.all_clients, 'prob_available', pa)
+        self.set_variable(self.all_clients, 'prob_unavailable', pua)
+
+class ConnectivityExampleSimulator(BasicSimulator):
+    def initialize(self):
+        drop_probs = self.random_module.uniform(0.,0.05, len(self.clients)).tolist()
+        self.client_drop_prob = {cid: dp for cid,dp in zip(self.clients, drop_probs)}
+
+    def update_client_connectivity(self, client_ids):
+        self.set_variable(client_ids, 'prob_drop', [self.client_drop_prob[cid] for cid in client_ids])
