@@ -1,57 +1,60 @@
 """This is a non-official implementation of 'Federated Learning with Buffered Asynchronous Aggregation' (http://arxiv.org/abs/2106.06639). """
-from .fedasync import Server as AsyncServer
-from .fedbase import BasicClient
+from flgo.algorithm.fedasync import Server as AsyncServer
+from flgo.algorithm.fedbase import BasicClient
+import flgo.utils.fmodule as fmodule
 import copy
 
 class Server(AsyncServer):
     def initialize(self):
-        self.init_algo_para({'period': 1, 'k': 0, 'K': 10})
+        self.init_algo_para({'period': 1, 'buffer_ratio': 0.2, 'eta_g': 1.0})
         self.tolerance_for_latency = 1000
         self.updated = True
-        self.accumulate_delta = None
+        self.buffer = []
+
+    def pack(self, client_id, mtype=0, *args, **kwargs):
+        return {
+            'model': copy.deepcopy(self.model),
+            'round': self.current_round,
+        }
 
     def iterate(self):
         # Scheduler periodically triggers the idle clients to locally train the model
         self.selected_clients = self.sample() if (self.gv.clock.current_time % self.period) == 0 or self.gv.clock.current_time == 1 else []
         if len(self.selected_clients) > 0:
             self.gv.logger.info('Select clients {} at time {}'.format(self.selected_clients, self.gv.clock.current_time))
-        # Record the timestamp of the selected clients
-        #  for cid in self.selected_clients: self.client_taus[cid] = self.current_round
-        # Check the currently received models
         res = self.communicate(self.selected_clients, asynchronous=True)
-        received_models = res['model']
+        received_updates = res['update']
+        received_client_taus = res['round']
         received_client_ids = res['__cid']
         # if reveive client update
-        if len(received_models) > 0:
+        if len(received_updates) > 0:
             self.gv.logger.info('Receive new models from clients {} at time {}'.format(received_client_ids, self.gv.clock.current_time))
-            flag = False
-            if self.accumulate_delta == None: flag = True
-            for id, model_k in enumerate(received_models):
-                if flag == True:
-                        self.accumulate_delta = model_k
-                        flag = False
-                else:
-                    self.accumulate_delta += model_k
-                self.k += 1
-                if self.k == self.K:
-                    self.accumulate_delta = self.accumulate_delta * pow(self.K, -1)
-                    self.model = self.model - self.lr * self.accumulate_delta
-                    self.accumulate_delta = None
-                    flag = True
-                    self.k = 0
-            # update aggregation round and the flag `updated`
-            self.current_round += 1
-            self.updated = True
-        return
-
-
+            for cdelta, ctau in zip(received_updates, received_client_taus):
+                self.buffer.append((cdelta, ctau))
+            if len(self.buffer)>=int(self.buffer_ratio*self.num_clients):
+                # aggregate and clear updates in buffer
+                taus_bf = [b[1] for b in self.buffer]
+                updates_bf = [b[0] for b in self.buffer]
+                weights_bf = [(1+self.current_round-ctau)**(-0.5) for ctau in taus_bf]
+                model_delta = fmodule._model_average(updates_bf, weights_bf)/len(self.buffer)
+                self.model = self.model + self.eta_g * model_delta
+                # clear buffer
+                self.buffer = []
+                return True
+        return False
 
 class Client(BasicClient):
+    def unpack(self, received_pkg):
+        round = received_pkg['round']
+        model = received_pkg['model']
+        return model, round
+
+    def pack(self, model, round):
+        return {'update':model, 'round':round}
 
     def reply(self, svr_pkg):
-        model = self.unpack(svr_pkg)
-        model_0 = copy.deepcopy(model)
+        model,round  = self.unpack(svr_pkg)
+        global_model = copy.deepcopy(model)
         self.train(model)
-        model_q = model_0 - model
-        cpkg = self.pack(model_q)
+        cpkg = self.pack(model-global_model, round)
         return cpkg

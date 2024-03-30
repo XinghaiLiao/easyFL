@@ -304,10 +304,9 @@ class BasicServer(BasicParty):
         for client_id in communicate_clients:
             received_package_buffer[client_id] = None
         # communicate with selected clients
-        self.gv.logger.time_start("Training")
         if self.num_parallels <= 1:
             # computing iteratively
-            for client_id in tqdm(communicate_clients, desc="Round {}/{} Local Training on {} Clients".format(self.current_round, self.num_rounds, len(communicate_clients)), leave=False):
+            for client_id in tqdm(communicate_clients, desc="Local Training on {} Clients".format(len(communicate_clients)), leave=False):
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
                 response_from_client_id = self.communicate_with(self.clients[client_id].id, package=server_pkg)
@@ -337,7 +336,6 @@ class BasicServer(BasicParty):
                             pkg[k] = v.to(self.device)
                         except:
                             continue
-        self.gv.logger.time_end("Training")
         for i, client_id in enumerate(communicate_clients): received_package_buffer[client_id] = packages_received_from_clients[i]
         packages_received_from_clients = [received_package_buffer[cid] for cid in selected_clients if
                                           received_package_buffer[cid]]
