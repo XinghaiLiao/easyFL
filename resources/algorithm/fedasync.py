@@ -1,6 +1,6 @@
 """This is a non-official implementation of 'Asynchronous Federated Optimization' (http://arxiv.org/abs/1903.03934). """
-from .fedbase import BasicServer
-from .fedbase import BasicClient as Client
+from flgo.algorithm.fedbase import BasicServer
+from flgo.algorithm.fedbase import BasicClient as Client
 
 
 class Server(BasicServer):

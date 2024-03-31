@@ -4,8 +4,8 @@ of Non-Identical Data Distribution for Federated Visual Classification'
 (http://arxiv.org/abs/1909.06335).
 """
 
-from .fedavg import Client
-from .fedbase import BasicServer
+from flgo.algorithm.fedavg import Client
+from flgo.algorithm.fedbase import BasicServer
 
 class Server(BasicServer):
     def initialize(self, *args, **kwargs):
