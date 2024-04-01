@@ -2,7 +2,7 @@ import os
 import math
 import copy
 import collections
-from typing import Any
+from typing import Any, Callable
 from tqdm import tqdm
 import torch
 import torch.multiprocessing as mp
@@ -244,7 +244,7 @@ class BasicServer(BasicParty):
             self.gv.logger.log_once()
             self.gv.logger.time_end('Eval Time Cost')
         while True:
-            if self.if_exit(): break
+            if self._if_exit(): break
             self.gv.clock.step()
             # iterate
             updated = self.iterate()
@@ -268,7 +268,19 @@ class BasicServer(BasicParty):
         self.gv.logger.save_output_as_json()
         return
 
-    def if_exit(self):
+    def register_exit_condition(self, func: Callable):
+        """
+        Set exiting condition. Default exiting condition is the number of training rounds reaches a given threshold.
+        Args:
+            func (Callable): a callable function that takes the server as input and outputs a bool variable to decide whether to stop training
+        """
+        assert isinstance(func, Callable)
+        setattr(self, '_if_exit', func)
+
+    def _if_exit(self):
+        """
+        Stop federated training when this method returns True. Exiting if the training rounds reaches a given threshold is set as default.
+        """
         return self.current_round <= self.num_rounds
 
     def iterate(self):
