@@ -275,7 +275,9 @@ class BasicServer(BasicParty):
             func (Callable): a callable function that takes the server as input and outputs a bool variable to decide whether to stop training
         """
         assert isinstance(func, Callable)
-        setattr(self, '_if_exit', func)
+        def new_exit():
+            return func(self)
+        setattr(self, '_if_exit', new_exit)
 
     def _if_exit(self):
         """
