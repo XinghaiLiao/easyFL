@@ -283,7 +283,7 @@ class BasicServer(BasicParty):
         """
         Stop federated training when this method returns True. Exiting if the training rounds reaches a given threshold is set as default.
         """
-        return self.current_round <= self.num_rounds
+        return self.current_round > self.num_rounds
 
     def iterate(self):
         """
