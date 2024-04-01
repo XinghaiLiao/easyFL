@@ -243,7 +243,8 @@ class BasicServer(BasicParty):
             self.gv.logger.time_start('Eval Time Cost')
             self.gv.logger.log_once()
             self.gv.logger.time_end('Eval Time Cost')
-        while self.current_round <= self.num_rounds:
+        while True:
+            if self.if_exit(): break
             self.gv.clock.step()
             # iterate
             updated = self.iterate()
@@ -266,6 +267,9 @@ class BasicServer(BasicParty):
         # save results as .json file
         self.gv.logger.save_output_as_json()
         return
+
+    def if_exit(self):
+        return self.current_round <= self.num_rounds
 
     def iterate(self):
         """
