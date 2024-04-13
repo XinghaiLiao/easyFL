@@ -1,0 +1,47 @@
+from flgo.algorithm.fedbase import BasicServer
+from flgo.algorithm.fedbase import BasicClient as Client
+import numpy as np
+
+class AsyncServer(BasicServer):
+    def __init__(self, option={}):
+        super(AsyncServer, self).__init__(option)
+        self.concurrent_clients = set()
+
+    def sample(self):
+        all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in range(self.num_clients)]
+        clients_per_round = self.clients_per_round - len(self.concurrent_clients)
+        if clients_per_round<=0: return []
+        clients_per_round = max(min(clients_per_round, len(all_clients)), 1)
+        # full sampling with unlimited communication resources of the server
+        if 'full' in self.sample_option:
+            return all_clients
+        # sample clients
+        elif 'uniform' in self.sample_option:
+            # original sample proposed by fedavg
+            selected_clients = list(np.random.choice(all_clients, clients_per_round, replace=False)) if len(all_clients) > 0 else []
+        elif 'md' in self.sample_option:
+            # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local_movielens_recommendation data sizes
+            local_data_vols = [self.clients[cid].datavol for cid in all_clients]
+            total_data_vol = sum(local_data_vols)
+            p = np.array(local_data_vols) / total_data_vol
+            selected_clients = list(np.random.choice(all_clients, clients_per_round, replace=True, p=p)) if len(all_clients) > 0 else []
+        return selected_clients
+
+    def package_handler(self, received_packages:dict):
+        if self.package_is_empty(received_packages): return False
+        self.model = self.aggregate(received_packages['model'])
+        return True
+
+    def package_is_empty(self, received_packages:dict):
+        return len(received_packages['__cid']) == 0
+
+    def iterate(self):
+        self.selected_clients = self.sample()
+        self.concurrent_clients.update(set(self.selected_clients))
+        if len(self.selected_clients) > 0: self.gv.logger.info('Select clients {} at time {}.'.format(self.selected_clients, self.gv.clock.current_time))
+        self.model._round = self.current_round
+        received_packages = self.communicate(self.selected_clients, asynchronous=True)
+        self.concurrent_clients.difference_update(set(received_packages['__cid']))
+        if len(received_packages['__cid'])>0: self.gv.logger.info('Receive new models from clients {} at time {}'.format(received_packages['__cid'], self.gv.clock.current_time))
+        if_model_updated =  self.package_handler(received_packages)
+        return if_model_updated
