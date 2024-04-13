@@ -15,7 +15,7 @@ class AsyncServer(BasicServer):
             Selected clients.
         """
         all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in range(self.num_clients)]
-        all_clients = list(set(all_clients).difference_update(self.buffered_clients))
+        all_clients = list(set(all_clients).difference(self.buffered_clients))
         clients_per_round = self.clients_per_round - len(self.concurrent_clients)
         if clients_per_round<=0: return []
         clients_per_round = max(min(clients_per_round, len(all_clients)), 1)
