@@ -8,7 +8,7 @@ class Server(AsyncServer):
             {'alpha': 0.6, 'mu': 0.005, 'flag': 'poly', 'hinge_a': 10, 'hinge_b': 6, 'poly_a': 0.5})
 
     def package_handler(self, received_packages:dict):
-        if self.package_is_empty(received_packages): return False
+        if self.is_package_empty(received_packages): return False
         received_models = received_packages['model']
         taus = [m._round for m in received_models]
         alpha_ts = [self.alpha * self.s(self.current_round - tau) for tau in taus]

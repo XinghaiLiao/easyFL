@@ -8,6 +8,11 @@ class AsyncServer(BasicServer):
         self.concurrent_clients = set()
 
     def sample(self):
+        """
+        Sample clients under the limitation of the maximum numder of concurrent clients.
+        Returns:
+            Selected clients.
+        """
         all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in range(self.num_clients)]
         clients_per_round = self.clients_per_round - len(self.concurrent_clients)
         if clients_per_round<=0: return []
@@ -28,14 +33,34 @@ class AsyncServer(BasicServer):
         return selected_clients
 
     def package_handler(self, received_packages:dict):
-        if self.package_is_empty(received_packages): return False
+        """
+        Handle packages received from clients and return whether the global model is updated in this function.
+
+        Args:
+            received_packages (dict): a dict consisting of uploaded contents from clients
+        Returns:
+            is_model_updated (bool): True if the global model is updated in this function.
+        """
+        if self.is_package_empty(received_packages): return False
         self.model = self.aggregate(received_packages['model'])
         return True
 
-    def package_is_empty(self, received_packages:dict):
+    def is_package_empty(self, received_packages:dict):
+        """
+        Check whether the package dict is empty
+
+        Returns:
+            is_empty (bool): True if the package dict is empty
+        """
         return len(received_packages['__cid']) == 0
 
     def iterate(self):
+        """
+        The procedure of the server at each moment. Compared to synchronous methods, asynchronous servers perform iterations in a time-level view instead of a round-level view.
+
+        Returns:
+            if_model_updated (bool): True if the global model is updated at the current iteration
+        """
         self.selected_clients = self.sample()
         self.concurrent_clients.update(set(self.selected_clients))
         if len(self.selected_clients) > 0: self.gv.logger.info('Select clients {} at time {}.'.format(self.selected_clients, self.gv.clock.current_time))
