@@ -6,6 +6,7 @@ class AsyncServer(BasicServer):
     def __init__(self, option={}):
         super(AsyncServer, self).__init__(option)
         self.concurrent_clients = set()
+        self.buffered_clients = set()
 
     def sample(self):
         """
@@ -14,6 +15,7 @@ class AsyncServer(BasicServer):
             Selected clients.
         """
         all_clients = self.available_clients if 'available' in self.sample_option else [cid for cid in range(self.num_clients)]
+        all_clients = list(set(all_clients).difference_update(self.buffered_clients))
         clients_per_round = self.clients_per_round - len(self.concurrent_clients)
         if clients_per_round<=0: return []
         clients_per_round = max(min(clients_per_round, len(all_clients)), 1)
@@ -59,7 +61,7 @@ class AsyncServer(BasicServer):
         The procedure of the server at each moment. Compared to synchronous methods, asynchronous servers perform iterations in a time-level view instead of a round-level view.
 
         Returns:
-            if_model_updated (bool): True if the global model is updated at the current iteration
+            is_model_updated (bool): True if the global model is updated at the current iteration
         """
         self.selected_clients = self.sample()
         self.concurrent_clients.update(set(self.selected_clients))
@@ -67,6 +69,8 @@ class AsyncServer(BasicServer):
         self.model._round = self.current_round
         received_packages = self.communicate(self.selected_clients, asynchronous=True)
         self.concurrent_clients.difference_update(set(received_packages['__cid']))
+        self.buffered_clients.update(set(received_packages['__cid']))
         if len(received_packages['__cid'])>0: self.gv.logger.info('Receive new models from clients {} at time {}'.format(received_packages['__cid'], self.gv.clock.current_time))
-        if_model_updated =  self.package_handler(received_packages)
-        return if_model_updated
+        is_model_updated = self.package_handler(received_packages)
+        if is_model_updated: self.buffered_clients = set()
+        return is_model_updated
