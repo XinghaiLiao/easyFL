@@ -10,7 +10,7 @@ train_data = None
 val_data = None
 test_data = None
 
-def data_to_device(data, device):
+def data_to_device(batch_data, device):
     raise NotImplementedError
 
 def eval(model: nn.Module, data_loader: torch.utils.data.Dataset, device) -> dict:
