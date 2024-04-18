@@ -14,6 +14,9 @@ import flgo.utils.fmodule
 import threading
 import numpy as np
 
+def default_start_condition(server):
+    return server.num_clients>=6
+
 class Server(fedavg.Server):
     def __init__(self, option={}):
         self.test_data = None
@@ -49,8 +52,8 @@ class Server(fedavg.Server):
         self._data_names = []
         self._exit = False
         self._avalability_timeout = 30
-        self._communication_timeout = 30
-        self.start_condition = lambda x: x.num_clients>=2
+        self._communication_timeout = 1e10
+        self.start_condition = default_start_condition
 
     def register_start_condition(self, f):
         assert callable(f)
@@ -399,7 +402,7 @@ class Server(fedavg.Server):
                 if crt_cost>self._communication_timeout:
                     timeout_clients = [name for name in selected_clients if name not in buffer.keys()]
                     for name in timeout_clients:
-                        self.logger.info(f"Failed to receive packages from Client {name} due to timeout {self._communication_timeout}s.")
+                        self.logger.info(f"Failed to receive packages from Client {name} due to timeout {self._communication_timeout}s. Using 'set_communication_timeout' method to set timeout can allow a longer waiting period.")
                 break
             time.sleep(0.1)
         return self.unpack(buffer)
@@ -430,6 +433,8 @@ class Server(fedavg.Server):
                     self.algo_para[para_name] = type(self.algo_para[para_name])(pv)
                 except:
                     self.algo_para[para_name] = pv
+        for para_name, value in self.algo_para.items():
+            self.__setattr__(para_name, value)
 
     def save_checkpoint(self):
         cpt = {
@@ -462,7 +467,8 @@ class Server(fedavg.Server):
             self.gv.logger._es_patience = early_stop_option['_es_patience']
 
 class Client(fedavg.Client):
-    def initialize(self, *args, **kwargs):
+    def __init__(self, option={}):
+        super(Client, self).__init__(option)
         self.actions = {
             '0': self.reply,
         }
@@ -502,7 +508,7 @@ class Client(fedavg.Client):
         if '__option__' in reply: self.set_option(reply['__option__'])
         if 'algo_para' in reply and isinstance(reply['algo_para'], dict):
             self.option['algo_para'] = reply['algo_para']
-            for k,v in reply['algo_para']: setattr(self, k, v)
+            for k,v in reply['algo_para'].items(): setattr(self, k, v)
         return reply["port_recv"], reply["port_send"], reply['port_alive']
 
     def message_handler(self, package, *args, **kwargs):

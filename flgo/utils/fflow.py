@@ -555,7 +555,50 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
 
     Returns:
-        runner: the object instance that has the method runner.run()
+        runner: the object instance that has the method object.run()
+
+    Option:
+        sample              (str):  methods for sampling client, which should be one of 'uniform' (default), 'md', 'full' or each with an additional suffix '_available', e.g., 'full_available'
+        aggregate           (str):  methods for aggregating models,  which should be one of 'other' (default standard fedavg), 'uniform', 'weighted_scale', 'weighted_com'
+        num_rounds          (int):  number of communication rounds, default is 20
+        proportion          (flt):  proportion of clients sampled per round, default=0.2
+        learning_rate_decay (flt):  learning rate decay for the training process, default=0.998
+        lr_scheduler        (int):  type of the global learning rate scheduler, default=-1 (no decay), 0 is round-wise decay lr = lr*decay^round
+        early_stop          (int):  stop training if there is no improvement for no smaller than the maximum rounds, default=-1 (no early stop)
+        num_epochs          (int):  number of epochs when clients locally train the model on data, default=5
+        num_step            (int):  the number of local steps, which dominate num_epochs when setting num_steps>0', default=-1
+        learning_rate       (flt):  learning rate for inner solver;', type=float, default=0.1)
+        batch_size          (int):  batch size', type=float, default='64')
+        optimizer           (str):  select the optimizer for gd', type=str, choices=optimizer_list, default='SGD')
+        clip_grad           (flt):  clipping gradients if the max norm of gradients ||g|| > clip_norm > 0, default=0.0
+        momentum            (flt):  momentum of local training, default=0.0
+        weight_decay        (flt):  weight decay of local training',default=0.0
+        num_edge_rounds     (int):  number of edge rounds in hierFL',default=5
+        algo_para           (any):  algorithm-dependent hyper-parameters
+        train_holdout       (flt):  the rate of holding out the validation dataset from all the local training datasets',default=0.1
+        test_holdout        (flt):  the rate of holding out the validation dataset from the testing datasets owned by the server', default=0.0
+        local_test          (bool): if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.default=False.
+        seed                (flt):  seed for random initialization;', default=0
+        dataseed            (int):  seed for random initialization for data train/val/test partition', default=0
+        gpu                 (list\int): GPU IDs and empty input is equal to using CPU',
+        server_with_cpu     (bool): the model parameters will be stored in the memory if True, default=False
+        num_parallels       (int):  the number of parallels in the clients computing session, default=1
+        parallel_type       (str):  the type of parallel: 't' means multi-threading and 'p' means multi-processing, default = 't'
+        num_workers         (int):  the number of workers of DataLoader, default=0
+        pin_memory          (bool): pin_memory of DataLoader, default=False
+        no_drop_last        (bool): not to drop_last option of DataLoader, default is False
+        test_batch_size     (int):  the batch_size used in testing phase, default=512
+        availability        (str):  client availability mode, default = 'IDL'
+        connectivity        (str):  client connectivity mode, default = 'IDL'
+        completeness        (str):  client completeness mode, default = 'IDL'
+        responsiveness      (str):  client responsiveness mode, default='IDL'
+        log_level           (str):  the level of logger, default='INFO'
+        log_file            (bool): whether log to file and default value is False, default=False
+        no_log_console      (bool): whether log to screen and default value is True, default=False
+        no_overwrite        (bool): whether to overwrite the old result, default=False
+        eval_interval       (int):  evaluate every __ rounds, default=1
+        save_checkpoint     (str):  the level of logger, default=''
+        load_checkpoint     (str):  the level of logger, default=''
 
     Example:
     ```python
