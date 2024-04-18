@@ -235,7 +235,10 @@ def gen_benchmark_from_file(benchmark:str, config_file:str, target_path='.',data
             warnings.warn('There already exists a benchmark `{}`'.format(benchmark))
             return '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
         # raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
-    temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'temp')
+    if data_type=='general':
+        temp_path = os.path.join(flgo.benchmark.path, 'toolkits', 'general')
+    else:
+        temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'temp')
     if not os.path.exists(temp_path):
         raise NotImplementedError('There is no support to automatically generation of {}.{}. More other types are comming soon...'.format(data_type, task_type))
     else:
@@ -262,7 +265,10 @@ def gen_benchmark(benchmark:str, config_file:str, target_path='.',data_type:str=
     target_path = os.path.abspath(target_path)
     bmk_path = os.path.join(target_path, benchmark)
     if os.path.exists(bmk_path): raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
-    temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'temp')
+    if data_type=='general':
+        temp_path = os.path.join(flgo.benchmark.path, 'toolkits', 'general')
+    else:
+        temp_path = os.path.join(flgo.benchmark.path, 'toolkits', data_type, task_type, 'temp')
     if not os.path.exists(temp_path):
         raise NotImplementedError('There is no support to automatically generation of {}.{}. More other types are comming soon...'.format(data_type, task_type))
     else:
@@ -277,7 +283,7 @@ def gen_decentralized_benchmark(benchmark:str, config_file:str, target_path = '.
         where there must exist a function named `get_model` and a variable `train_data`. `val_data` and test_data are two optional
         variables in the configuration.
     Args:
-        benchmark (str): the name of the benchmark
+        benchmark (str): the name of the benchmarkc
         config_file (str): the path of the configuration file
         target_path: (str): the path to store the benchmark
         data_type (str): the type of dataset that should be in the list ['cv', 'nlp', 'graph', 'rec', 'series', 'tabular']
