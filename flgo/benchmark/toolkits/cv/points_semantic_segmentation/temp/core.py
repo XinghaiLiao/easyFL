@@ -107,5 +107,5 @@ class TaskPipe(FromDatasetPipe):
 
 class TaskCalculator(GeneralCalculator):
     def test(self, model, dataset, batch_size=64, num_workers=0, pin_memory=False):
-        data_loader = self.DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, collate_fn=self.collect_fn)
+        data_loader = self.DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory, collate_fn=self.collate_fn)
         return evaluate(model, data_loader, criterion=nn.CrossEntropyLoss(), device=self.device)

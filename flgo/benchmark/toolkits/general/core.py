@@ -16,6 +16,10 @@ try:
     from .config import DataLoader as MyDataloader
 except:
     MyDataloader = None
+try:
+    from .config import collate_fn
+except:
+    collate_fn = None
 
 from .config import data_to_device, eval, compute_loss
 
@@ -30,7 +34,7 @@ class TaskGenerator(fbb.FromDatasetGenerator):
 
 class TaskPipe(fbb.FromDatasetPipe):
     TaskDataset = torch.utils.data.Subset
-    def __init__(self, task_path, train_data, val_data=None, test_data=None):
+    def __init__(self, task_path):
         super(TaskPipe, self).__init__(task_path, train_data=train_data, val_data=val_data, test_data=test_data)
 
     def save_task(self, generator):
@@ -69,20 +73,19 @@ class TaskCalculator(fbb.BasicTaskCalculator):
 
     def __init__(self, device, optimizer_name='sgd'):
         super(TaskCalculator, self).__init__(device, optimizer_name)
-        self.device = device
-        self.optimizer_name = optimizer_name
-        self.criterion = None
         self.DataLoader = MyDataloader if MyDataloader is not None else torch.utils.data.DataLoader
-        self.collect_fn = None
+        self.collate_fn = collate_fn
 
     def to_device(self, data, *args, **kwargs):
-        return data_to_device(data)
+        return data_to_device(data, self.device)
 
     def get_dataloader(self, dataset, batch_size=64, *args, **kwargs):
-        return self.DataLoader(dataset, batch_size=batch_size, **kwargs,)
+        return self.DataLoader(dataset, batch_size=batch_size, collate_fn=self.collate_fn, **kwargs,)
 
-    def test(self, model, data, *args, **kwargs):
-        return eval(model, data, *args, **kwargs)
+    @torch.no_grad()
+    def test(self, model, data, batch_size=64, num_workers=0, pin_memory=False, **kwargs):
+        data_loader = self.get_dataloader(data, batch_size=64, num_workers=num_workers, pin_memory=pin_memory)
+        return eval(model, data_loader, self.device)
 
     def compute_loss(self, model, data, *args, **kwargs):
-        return compute_loss(model, data, *args, **kwargs)
+        return compute_loss(model, data, self.device)

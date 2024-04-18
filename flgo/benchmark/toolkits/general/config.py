@@ -10,13 +10,13 @@ train_data = None
 val_data = None
 test_data = None
 
-def data_to_device(data, *args, **kwargs):
+def data_to_device(data, device):
     raise NotImplementedError
 
-def eval(model: nn.Module, data: torch.utils.data.Dataset) -> dict:
+def eval(model: nn.Module, data_loader: torch.utils.data.Dataset, device) -> dict:
     raise NotImplementedError
 
-def compute_loss(batch_data, model:nn.Module) -> dict:
+def compute_loss(batch_data, model:nn.Module, device) -> dict:
     raise NotImplementedError
 
 def get_model(*args, **kwargs) -> torch.nn.Module:

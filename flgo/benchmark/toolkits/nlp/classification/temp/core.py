@@ -87,4 +87,4 @@ class TaskCalculator(GeneralCalculator):
         super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.DataLoader = torch.utils.data.DataLoader
         self.criterion = torch.nn.CrossEntropyLoss()
-        self.collect_fn = collate_batch
+        self.collate_fn = collate_batch

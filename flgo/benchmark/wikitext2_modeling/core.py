@@ -98,7 +98,7 @@ class TaskCalculator(BasicTaskCalculator):
     def __init__(self, device, optimizer_name='sgd'):
         super(TaskCalculator, self).__init__(device, optimizer_name)
         self.DataLoader = torch.utils.data.DataLoader
-        self.collect_fn = collate_fn
+        self.collate_fn = collate_fn
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def compute_loss(self, model, data):
@@ -142,4 +142,4 @@ class TaskCalculator(BasicTaskCalculator):
     def get_dataloader(self, dataset, batch_size=64, shuffle=False, num_workers=0, pin_memory=False, drop_last=False):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
-        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last, collate_fn=self.collect_fn)
+        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last, collate_fn=self.collate_fn)

@@ -388,7 +388,7 @@ class BasicTaskCalculator(AbstractTaskCalculator):
         self.optimizer_name = optimizer_name
         self.criterion = None
         self.DataLoader = None
-        self.collect_fn = None
+        self.collate_fn = None
 
     def to_device(self, data, *args, **kwargs):
         return NotImplementedError
@@ -427,8 +427,8 @@ class BasicTaskCalculator(AbstractTaskCalculator):
     def set_criterion(self, criterion:Callable)->None:
         self.criterion = criterion
 
-    def set_collect_fn(self, collect_fn:Callable)->None:
-        self.collect_fn = collect_fn
+    def set_collate_fn(self, collate_fn:Callable)->None:
+        self.collate_fn = collate_fn
 
 class XYHorizontalTaskPipe(BasicTaskPipe):
     """

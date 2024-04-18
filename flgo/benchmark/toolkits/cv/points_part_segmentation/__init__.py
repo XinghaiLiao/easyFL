@@ -382,10 +382,10 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
         super(GeneralCalculator, self).__init__(device, optimizer_name)
         self.criterion = torch.nn.NLLLoss()
         self.DataLoader = torch.utils.data.DataLoader
-        def collect_fn_(x):
+        def collate_fn_(x):
             return torch.stack([xi[0] for xi in x]).transpose(2,1), torch.cat([xi[1] for xi in x]), torch.stack([xi[2] for xi in x])
-        # self.collect_fn = lambda x: (x[0].transpose(2, 1), x[1][:,0])
-        self.collect_fn = collect_fn_
+        # self.collate_fn = lambda x: (x[0].transpose(2, 1), x[1][:,0])
+        self.collate_fn = collate_fn_
 
     def compute_loss(self, model, data):
         tdata = self.to_device(data)
@@ -463,4 +463,4 @@ class GeneralCalculator(flgo.benchmark.base.BasicTaskCalculator):
     def get_dataloader(self, dataset, batch_size=64, shuffle=True, num_workers=0, pin_memory=False, drop_last=False, *args, **kwargs):
         if self.DataLoader == None:
             raise NotImplementedError("DataLoader Not Found.")
-        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last, collate_fn=self.collect_fn)
+        return self.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last, collate_fn=self.collate_fn)
