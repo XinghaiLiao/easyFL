@@ -442,7 +442,7 @@ Our FLGo is able to be extended to real-world application. We provide a simple [
 
 
 
-# Overview 	:blue_book:
+# Overview :notebook:
 
 ### Options
 
