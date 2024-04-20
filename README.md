@@ -69,7 +69,7 @@ We take a classical federated dataset, Federated MNIST, as the example. The MNIS
 Line 1 creates the federated dataset as `./my_task` and visualizes it in `./my_task/res.png`
 ![result](docs/img/getstart_fig1.png)
 
-Lines 2 and 3 starts the training procedure and outs information to the console
+Lines 2 and 3 start the training procedure and outputs information to the console
 ```
 2024-04-15 02:30:43,763 fflow.py init [line:642] INFO PROCESS ID:	552206
 2024-04-15 02:30:43,763 fflow.py init [line:643] INFO Initializing devices: cuda:0 will be used for this running.
