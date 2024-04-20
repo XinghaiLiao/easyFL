@@ -434,7 +434,7 @@ class Server(fedavg.Servere):
 
 ### Use Logger
 We show how to use customized Logger [Here](https://flgo-xmu.github.io/Tutorials/1_Configuration/1.6_Logger_Configuration/)
-## Tutorials and Documents
+## Tutorials and Documents :page_with_curl:
 We have provided comprehensive [Tutorials](https://flgo-xmu.github.io/Tutorials/) and [Document](https://flgo-xmu.github.io/Docs/FLGo/) for FLGo. 
 ## Deployment To Real Machines :computer:
 Our FLGo is able to be extended to real-world application. We provide a simple [Example](https://github.com/WwZzz/easyFL/tree/FLGo/example/realworld_case) to show how to run FLGo on multiple machines. 
