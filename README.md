@@ -625,9 +625,11 @@ Zheng Wang, zwang@stu.xmu.edu.cn
 
 Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
 
-# Buy Me a Coffee
+# Buy Me a Coffee :coffee:
 Buy me a coffee if you'd like to support the development of this repo.
-![b38c78d88862ec369f3dc20fe253d98](https://github.com/WwZzz/easyFL/assets/20792079/89050169-3927-4eb0-ac32-68d8bee12326)
+<center>
+<img src="https://github.com/WwZzz/easyFL/assets/20792079/89050169-3927-4eb0-ac32-68d8bee12326" width=180/>
+</center>
 
 ## References
 <div id='refer-anchor-1'></div>
