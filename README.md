@@ -397,7 +397,7 @@ We save each checkpoint at `task_path/checkpoint/checkpoint_name/`. By specifyin
 ```python
 import flgo.algorithm.fedavg as fedavg
 # the two methods need to be extended when using other algorithms
-class Server(fedavg.Servere): 
+class Server(fedavg.Server): 
     def save_checkpoint(self):
         cpt = {
             'round': self.current_round,                           # current communication round
@@ -430,7 +430,7 @@ class Server(fedavg.Servere):
             self.gv.logger._es_best_round = early_stop_option['_es_best_round']
             self.gv.logger._es_patience = early_stop_option['_es_patience']
 ```
-**Note**: different FL algorithms need to save different types of checkpoints. Here we only provide checkpoint save&load mechanism of FedAvg. We remain two APIs for customization as below:
+**Note**: different FL algorithms need to save different types of checkpoints. Here we only provide checkpoint save&load mechanism of FedAvg. We remain two APIs for customization above:
 
 ### Use Logger
 We show how to use customized Logger [Here](https://flgo-xmu.github.io/Tutorials/1_Configuration/1.6_Logger_Configuration/)
