@@ -32,7 +32,7 @@
 # Introduction
 FLGo is a library to conduct experiments about Federated Learning (FL). It is strong and reusable for research on FL, providing comprehensive easy-to-use modules to hold out for those who want to do various federated learning experiments. 
 
-## Installation
+## Installation 
 * Install FLGo through pip. It's recommended to install pytorch by yourself before installing this library.  
 ```sh
 pip install flgo --upgrade
@@ -41,14 +41,14 @@ pip install flgo --upgrade
 ```sh
 git clone https://github.com/WwZzz/easyFL.git
 ```
-## Join Us
+## Join Us :smiley:
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 <center>
 <img src="https://github.com/WwZzz/easyFL/assets/20792079/b7f0946e-5106-4164-85de-3f8702853692" width=180/>
 <img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=200/>
 </center>
 
-# Quick Start with 3 lines
+# Quick Start with 3 lines :zap:
 ```python
 import flgo
 import flgo.benchmark.mnist_classification as mnist
@@ -102,9 +102,9 @@ Each training result will be saved as a record under `./my_task/record`. We can 
 
 ![result](docs/img/getstart_fig2.png)
 
-# What FLGo can do?
-## Simulate Real-World System Heterogeneity
-
+# Why Using FLGo? :hammer_and_wrench:
+## Simulate Real-World System Heterogeneity :iphone:
+![flgo_simulator](https://raw.githubusercontent.com/WwZzz/myfigs/master/overview_flgo_async.png)
 Our FLGo supports running different algorithms in virtual environments like real-world. For example, clients in practice may 
 * *be sometime inavailable*, 
 * *response to the server very slow*, 
@@ -123,7 +123,7 @@ fedavg_runner.run()
 ```
 
 `Simulator` is fully customizable and can fairly reflect the impact of system heterogeneity on different algorithms. Please refer to [Paper](https://arxiv.org/abs/2306.12079) or [Tutorial](https://flgo-xmu.github.io/Tutorials/4_Simulator_Customization/) for more details.
-## Comprehensive Benchmarks
+## Comprehensive Benchmarks :family_woman_woman_boy_boy:
 FLGo provides more than 50 benchmarks across different data types, different communication topology,...
 <table>
     <tr>
@@ -235,7 +235,7 @@ flgo.init(task, fedavg, {'gpu':0}).run()
 ```
 
 
-## Visualized Data Heterogeneity
+## Visualized Data Heterogeneity :eyes:
 We realize data heterogeneity by flexible partitioners. These partitioners can be easily combined with `benchmark` to generate federated tasks with different data distributions.
 ```python
 import flgo.benchmark.cifar10_classification as cifar10
@@ -269,7 +269,7 @@ flgo.gen_task_by_(cifar10, fbp.DiversityPartitioner(num_clients=100, diversity=1
 
 `Partitioner` is also customizable in flgo. We have provided a detailed example in this [Tutorial](https://flgo-xmu.github.io/Tutorials/3_Benchmark_Customization/3.7_Data_Heterogeneity/).
 
-## Reproduction of Algorithms from TOP-tiers and Journals
+## Reproduction of Algorithms from TOP-tiers and Journals :1st_place_medal:
 We have realized more than 50 algorithms from TOP-tiers and Journals. The algorithms are listed as below
 
 #### Classical FL & Data Heterogeneity
@@ -369,7 +369,7 @@ flgo.init(task, fedavg, {'gpu':0}).run()
 ```
 
 [//]: # (## Multiple Communication Topology Support)
-## Easy-to-use Experimental Tools
+## Easy-to-use Experimental Tools :toolbox:
 ### Load Results
 Each runned result will be automatically saved in `task_path/record/`. We provide an API to easily load and filter records.
 ```python
@@ -436,13 +436,13 @@ class Server(fedavg.Servere):
 We show how to use customized Logger [Here](https://flgo-xmu.github.io/Tutorials/1_Configuration/1.6_Logger_Configuration/)
 ## Tutorials and Documents
 We have provided comprehensive [Tutorials](https://flgo-xmu.github.io/Tutorials/) and [Document](https://flgo-xmu.github.io/Docs/FLGo/) for FLGo. 
-## Deployment To Real Machines
+## Deployment To Real Machines :computer:
 Our FLGo is able to be extended to real-world application. We provide a simple [Example](https://github.com/WwZzz/easyFL/tree/FLGo/example/realworld_case) to show how to run FLGo on multiple machines. 
 
 
 
 
-# Overview
+# Overview 	:blue_book:
 
 ### Options
 
