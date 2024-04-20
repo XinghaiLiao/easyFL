@@ -352,7 +352,7 @@ We have realized more than 50 algorithms from TOP-tiers and Journals. The algori
 | TailorFL         | [link](https://dl.acm.org/doi/10.1145/3560905.3568503)                                                                       | SenSys 2022  |
 | pFedGate         | [link](http://arxiv.org/abs/2305.02776)                                                                                      | ICML 2023    |
 
-## Combine All The Things Together!
+## Combine All The Things Together! :bricks:
 <img src="https://github.com/WwZzz/myfigs/blob/master/readme_flgo_com.png?raw=true" width=500/>
 
 FLGo supports flexible combinations of benchmarks, partitioners, algorithms and simulators , which are independent to each other and thus can be used like plugins. We have provided these plugins [here](https://github.com/WwZzz/easyFL/tree/FLGo/resources) , where each can be immediately downloaded and used by API
