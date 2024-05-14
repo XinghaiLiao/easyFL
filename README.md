@@ -43,8 +43,9 @@ git clone https://github.com/WwZzz/easyFL.git
 ```
 ## Join Us :smiley:
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
+
 <center>
-<img src="https://github.com/WwZzz/easyFL/assets/20792079/f6e9c928-0735-4acb-b672-020f08a17286" width=180/>
+<img src="https://github.com/WwZzz/easyFL/assets/20792079/ade176a1-d3fa-4c5d-b8c6-7b65a409d41b" width=180/>
 <img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=180/>
 </center>
 
@@ -393,7 +394,7 @@ ckpt = '1'
 runner = flgo.init(task, fedavg, {'gpu':[0,],'log_file':True, 'num_epochs':1, 'save_checkpoint':ckpt, 'load_checkpoint':ckpt})
 runner.run()
 ```
-We save each checkpoint at `task_path/checkpoint/checkpoint_name/`. By specifying the name of checkpoints, the training can be recovered from them.
+We save each checkpoint at `task_path/checkpoint/checkpoint_name/`. By specifying the name of checkpoints, the training can be automatically recovered from them.
 ```python
 import flgo.algorithm.fedavg as fedavg
 # the two methods need to be extended when using other algorithms
