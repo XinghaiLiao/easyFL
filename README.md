@@ -49,6 +49,7 @@ Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 <img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=180/>
 </center>
 Tutorials in Chinese can be found ![here](https://www.zhihu.com/column/c_1618319253936984064) 
+
 # Quick Start with 3 lines :zap:
 ```python
 import flgo
