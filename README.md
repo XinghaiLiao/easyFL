@@ -45,7 +45,7 @@ git clone https://github.com/WwZzz/easyFL.git
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 
 <center>
-<img src="https://github.com/WwZzz/easyFL/assets/20792079/b9e525f9-b154-4720-aec0-b6dcbee2888c" width=180/>
+<img src="https://github.com/WwZzz/easyFL/assets/20792079/5ed4dc4b-6cc1-4cf9-a42a-c1510246c415" width=180/>
 <img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=180/>
 </center>
 
