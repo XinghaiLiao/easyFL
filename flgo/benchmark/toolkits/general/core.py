@@ -20,7 +20,10 @@ try:
     from .config import collate_fn
 except:
     collate_fn = None
-
+try:
+    from .config import split_dataset
+except:
+    split_dataset = None
 from .config import data_to_device, eval, compute_loss
 
 import flgo.benchmark.base as fbb
@@ -36,12 +39,27 @@ class TaskPipe(fbb.FromDatasetPipe):
     TaskDataset = torch.utils.data.Subset
     def __init__(self, task_path):
         super(TaskPipe, self).__init__(task_path, train_data=train_data, val_data=val_data, test_data=test_data)
+        self.my_split_dataset = split_dataset
+
+    def split_dataset(self, dataset, p=0.0):
+        if self.my_split_dataset is None:
+            if p == 0: return dataset, None
+            s1 = int(len(dataset) * p)
+            s2 = len(dataset) - s1
+            if s1==0:
+                return dataset, None
+            elif s2==0:
+                return None, dataset
+            else:
+                return torch.utils.data.random_split(dataset, [s2, s1])
+        else:
+            return self.my_split_dataset(dataset, p)
 
     def save_task(self, generator):
-        client_names = self.gen_client_names(len(generator.local_datas)) # 生成用户的名字
-        feddata = {'client_names': client_names}                         # 记录用户的名字属性为client_names
-        for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],} # 记录每个用户的本地数据划分信息，以其名字为关键字索引
-        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf: # 保存为data.json文件到任务目录中
+        client_names = self.gen_client_names(len(generator.local_datas))
+        feddata = {'client_names': client_names}
+        for cid in range(len(client_names)): feddata[client_names[cid]] = {'data': generator.local_datas[cid],}
+        with open(os.path.join(self.task_path, 'data.json'), 'w') as outf:
             json.dump(feddata, outf)
         return
 
