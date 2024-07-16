@@ -98,7 +98,7 @@ class AutoScheduler(BasicScheduler):
         >>> flgo.multi_init_and_run(runner_args, scheduler=sc)
     ```
     """
-    def __init__(self, devices:list, put_interval = 5, mean_memory_occupated = 1000, available_interval=5, dynamic_memory_occupated=True, dynamic_condition='mean'):
+    def __init__(self, devices:list, put_interval = 5, mean_memory_occupated = 1000, available_interval=5, dynamic_memory_occupated=True, dynamic_condition='mean', max_processes_per_device=10):
         super(AutoScheduler, self).__init__(devices)
         pynvml.nvmlInit()
         crt_time = time.time()
@@ -114,6 +114,7 @@ class AutoScheduler(BasicScheduler):
             }
             for dev in self.devices
         }
+        self.max_processes_per_device = max_processes_per_device
         self.put_interval = put_interval
         self.mean_memory_occupated = mean_memory_occupated
         self.available_interval = available_interval
@@ -124,19 +125,22 @@ class AutoScheduler(BasicScheduler):
         for dev in self.devices:
             self.flush(dev)
         all_mems = []
+        num_processes_per_device = []
         for dev in self.devices:
             dev_handle = self.dev_state[dev]['handle']
             ps = pynvml.nvmlDeviceGetComputeRunningProcesses(dev_handle)
+            num_processes_per_device.append(len(ps))
             mems = [p.usedGpuMemory for p in ps if p.pid in self.process_set]
             all_mems.extend(mems)
         if self.dynamic_memory_occupated:
+            all_mems = [l for l in all_mems if l is not None]
             if len(all_mems)>0:
                 mem = max(all_mems) if self.dynamic_condition=='max' else sum(all_mems)/len(all_mems)
                 self.mean_memory_occupated = self.byte2mb(mem)
         tmp = copy.deepcopy(self.devices)
         sorted(tmp, key=lambda x:self.dev_state[x]['free_memory'])
-        for dev in tmp:
-            if self.check_available(dev):
+        for did, dev in enumerate(tmp):
+            if self.check_available(dev) and self.max_processes_per_device>=num_processes_per_device[did]:
                 return dev
         return None
 
