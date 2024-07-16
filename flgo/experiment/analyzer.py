@@ -268,8 +268,15 @@ class Selector:
         return res, list(groups.keys())
 
 def load_records(task:str, algorithm: List[str]|str, filter:dict={}):
-    """
+    r"""
+    Load the records of training.
 
+    Args:
+        task (str): the path of the task
+        algorithm (list(str)|str): the algorithm name of the list of algorihtms' names
+        filter (dict): filter records of undesirable settings, e.g., learning_rate, batch_size
+    Returns:
+        the list of selected records
     """
     new_filter = {}
     key_map = {
@@ -298,6 +305,15 @@ def load_records(task:str, algorithm: List[str]|str, filter:dict={}):
     return records
 
 def delete_records(task:str, algorithm: List[str]|str, filter:dict={}):
+    r"""
+    Delete the records of training.
+
+    Args:
+        task (str): the path of the task
+        algorithm (list(str)|str): the algorithm name of the list of algorihtms' names
+        filter (dict): filter records of undesirable settings, e.g., learning_rate, batch_size
+    Returns:
+    """
     new_filter = {}
     key_map = {
         'num_epochs':'E',
