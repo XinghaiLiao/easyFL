@@ -268,6 +268,9 @@ class Selector:
         return res, list(groups.keys())
 
 def load_records(task:str, algorithm: List[str]|str, filter:dict={}):
+    """
+
+    """
     new_filter = {}
     key_map = {
         'num_epochs':'E',
@@ -293,6 +296,40 @@ def load_records(task:str, algorithm: List[str]|str, filter:dict={}):
     if isinstance(algorithm, str): algorithm = [algorithm]
     records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}).all_records
     return records
+
+def delete_records(task:str, algorithm: List[str]|str, filter:dict={}):
+    new_filter = {}
+    key_map = {
+        'num_epochs':'E',
+        'learning_rate': 'LR',
+        'batch_size': 'B',
+        'lr': 'LR',
+        'simulator': 'SIM',
+        'weight_decay': 'WD',
+        'seed': 'S',
+        'learning_rate_decay': 'LD',
+        'num_rounds': 'R',
+        'model': 'M',
+        'proportion': 'P',
+        'logger': 'LG',
+    }
+    for k,v in filter.items():
+        if k in key_map.keys():
+            new_filter[key_map[k]] = v
+        elif k in key_map.values():
+            new_filter[k] = v
+        else:
+            warnings.warn(f"Condition '{k}' is invalid")
+    if isinstance(algorithm, str): algorithm = [algorithm]
+    records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}).all_records
+    if len(records)==0:
+        print("Records not found.")
+        return 0
+    files = [r.rec_path for r in records]
+    for f in files:
+        os.remove(f)
+        print(f"Record {f} has been deleted.")
+    return len(files)
 
 ##############################  Painter ##############################
 class PaintObject:
@@ -476,7 +513,7 @@ class Painter:
         return [{k:v[i] for k,v in raw_obj_option.items()} for i in range(len(self.records))]
 
 ############################# Table ##############################
-def min_value(record,  col_option):
+def min_value(record,  col_option={}):
     r"""
     Get minimal value. The col_option should be like
         {'x': key of record.data}
@@ -490,7 +527,7 @@ def min_value(record,  col_option):
     """
     return np.min(record.data[col_option['x']])
 
-def max_value(record,  col_option):
+def max_value(record,  col_option={}):
     r"""
     Get maximal value.The col_option should be like
         {'x': key of record.data}
@@ -504,7 +541,7 @@ def max_value(record,  col_option):
     """
     return np.max(record.data[col_option['x']])
 
-def variance(record, col_option):
+def variance(record, col_option={}):
     r"""
     Get variance. The col_option should be like
         {'x': key of record.data}
@@ -518,7 +555,7 @@ def variance(record, col_option):
     """
     return np.var(record.data[col_option['x']])
 
-def std_value(record, col_option):
+def std_value(record, col_option={}):
     r"""
     Get standard deviation. The col_option should be like
         {'x': key of record.data}
@@ -532,7 +569,7 @@ def std_value(record, col_option):
     """
     return np.std(record.data[col_option['x']])
 
-def mean_value(record, col_option):
+def mean_value(record, col_option={}):
     r"""
     Get mean value. The col_option should be like
         {'x': key of record.data}
@@ -546,7 +583,7 @@ def mean_value(record, col_option):
     """
     return np.mean(record.data[col_option['x']])
 
-def final_value(record, col_option):
+def final_value(record, col_option={}):
     r"""
     Get final value. The col_option should be like
         {'x': key of record.data}
@@ -560,7 +597,7 @@ def final_value(record, col_option):
     """
     return record.data[col_option['x']][-1]
 
-def optimal_x_by_y(record, col_option):
+def optimal_x_by_y(record, col_option={}):
     r"""
     Get the value of y where the value of x is the optimal.
     The col_option should be like
@@ -583,7 +620,7 @@ def optimal_x_by_y(record, col_option):
     tmp = f(record.data[col_option['y']])
     return record.data[col_option['x']][tmp]
 
-def group_optimal_value(record, col_option):
+def group_optimal_value(record, col_option={}):
     r"""
     Get the grouped optimal value. The col_option should be like
         {
@@ -606,7 +643,7 @@ def group_optimal_value(record, col_option):
     std_v = np.std(minvs)
     return "{:.4f} ± {:.4f}".format(mean_v, std_v)
 
-def group_optimal_x_by_y(record, col_option):
+def group_optimal_x_by_y(record, col_option={}):
     r"""
     Get the grouped value of y where the grouped value of x is the optimal.
     The col_option should be like
@@ -653,7 +690,7 @@ class Table:
         self.tb.float_format = "3.4"
         self.sort_key = None
 
-    def add_column(self, func, col_option):
+    def add_column(self, func, col_option={}):
         r"""
         Add a column to this table. For each record $Record_k$, its value $v_k$
         in this column is v_k=func(Record_k, col_option), where func can be 
@@ -679,7 +716,7 @@ class Table:
             fieldname = col_option['name']
         else:
             fieldname = '-'.join([str(v) for k,v in col_option.items() if k!='sort'])
-            fieldname = func.__name__ + '-' + fieldname
+            fieldname = func.__name__ + '-' + fieldname if fieldname!='' else func.__name__
         self.tb.add_column(fieldname=fieldname, column=column)
         if 'sort' in col_option.keys(): self.tb.sortby = fieldname
 
