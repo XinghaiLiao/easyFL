@@ -48,7 +48,7 @@ import argparse
 import math
 import random
 import warnings
-
+from typing import *
 import numpy as np
 import matplotlib.pyplot as plt
 import yaml
@@ -99,6 +99,9 @@ class Record:
         self.datas = [self.data]
         self.set_communication_round()
         self.set_client_id()
+        self.option = self.data['option']
+        self.log = {k:v for k,v in self.data.items() if 'option' not in k}
+        self.algorithm = self.option['algorithm']
 
     def set_communication_round(self):
         num_rounds = self.data['option']['num_rounds']
@@ -263,6 +266,33 @@ class Selector:
         for g in groups:
             res.append(Record.create_group(groups[g]))
         return res, list(groups.keys())
+
+def load_records(task:str, algorithm: List[str]|str, filter:dict={}):
+    new_filter = {}
+    key_map = {
+        'num_epochs':'E',
+        'learning_rate': 'LR',
+        'batch_size': 'B',
+        'lr': 'LR',
+        'simulator': 'SIM',
+        'weight_decay': 'WD',
+        'seed': 'S',
+        'learning_rate_decay': 'LD',
+        'num_rounds': 'R',
+        'model': 'M',
+        'proportion': 'P',
+        'logger': 'LG',
+    }
+    for k,v in filter.items():
+        if k in key_map.keys():
+            new_filter[key_map[k]] = v
+        elif k in key_map.values():
+            new_filter[k] = v
+        else:
+            warnings.warn(f"Condition '{k}' is invalid")
+    if isinstance(algorithm, str): algorithm = [algorithm]
+    records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}).all_records
+    return records
 
 ##############################  Painter ##############################
 class PaintObject:
