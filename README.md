@@ -626,7 +626,6 @@ Please cite our paper in your publications if this code helps your research.
 ## Contacts
 Zheng Wang, zwang@stu.xmu.edu.cn
 
-Xiaoliang Fan, fanxiaoliang@xmu.edu.cn, https://fanxlxmu.github.io
 
 # Buy Me a Coffee :coffee:
 Buy me a coffee if you'd like to support the development of this repo.
