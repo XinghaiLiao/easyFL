@@ -65,7 +65,7 @@ class DataPipeTaskPipe(BasicTaskPipe):
         test_data = to_map_style_dataset(test_dp)
         # rearrange data for server
         server_data_test, server_data_valid = self.split_dataset(test_data, running_time_option['test_holdout'])
-        task_data = {'server': {'test': server_data_test, 'valid': server_data_valid}}
+        task_data = {'server': {'test': server_data_test, 'val': server_data_valid}}
         # rearrange data for clients
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'])
@@ -78,7 +78,7 @@ class DataPipeTaskPipe(BasicTaskPipe):
             else:
                 cdata_train = cdata
                 cdata_valid, cdata_test = None, None
-            task_data[cname] = {'train': cdata_train, 'valid': cdata_valid, 'test': cdata_test}
+            task_data[cname] = {'train': cdata_train, 'val': cdata_valid, 'test': cdata_test}
         return task_data
 
 class GeneralCalculator(BasicTaskCalculator):

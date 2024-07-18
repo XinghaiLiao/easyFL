@@ -84,7 +84,7 @@ class TaskPipe(FromDatasetPipe):
             else:
                 cdata_train = cdata
                 cdata_valid, cdata_test = None, None
-            task_data[cname] = {'train': cdata_train, 'valid': cdata_valid, 'test': cdata_test}
+            task_data[cname] = {'train': cdata_train, 'val': cdata_valid, 'test': cdata_test}
         return task_data
 
     def split_dataset(self, dataset, p=0.0):
