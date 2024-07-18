@@ -33,7 +33,7 @@ test_data = test_data.map(apply_transform)
 class TextClassificationModel(torch.nn.Module):
     def __init__(self, vocab_size, embed_dim, num_class):
         super(TextClassificationModel, self).__init__()
-        self.embedding = torch.nn.EmbeddingBag(vocab_size, embed_dim, sparse=True)
+        self.embedding = torch.nn.EmbeddingBag(vocab_size, embed_dim)
         self.fc = torch.nn.Linear(embed_dim, num_class)
         self.init_weights()
 
