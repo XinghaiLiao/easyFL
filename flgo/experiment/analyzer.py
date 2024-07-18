@@ -749,6 +749,18 @@ class Table:
     def __repr__(self):
         return self.tb.__repr__()
 
+    def get_column(self, idx: str|int):
+        if isinstance(idx, int):
+            col_values = [r[idx] for r in self.tb.rows]
+        elif isinstance(idx, str):
+            nidx = self.tb.field_names.index(idx)
+            if nidx<0:
+                raise ValueError(f"The column {idx} not found.")
+            col_values = [r[nidx] for r in self.tb.rows]
+        else:
+            raise ValueError(f"The parameter type of idx must be str or int.")
+        return col_values
+
 def show(config, save_figure=False, save_text=False, path='.', seed=0):
     r"""
     Show the results according to analysis configuration.
