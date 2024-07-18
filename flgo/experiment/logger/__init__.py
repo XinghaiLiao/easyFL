@@ -2283,11 +2283,11 @@ class BasicLogger(Logger):
         else:
             output_name = output_name + ("K{}_".format(self.option['num_steps']))
 
-        output_name = output_name + "LR{:.2e}_P{:.2e}_S{}_LD{:.2e}_WD{:.2e}".format(
+        output_name = output_name + "LR{:.2e}_P{:.2e}_S{}_LD{}_WD{:.4e}".format(
                         self.option['learning_rate'],
                         self.option['proportion'],
                         self.option['seed'],
-                        self.option['lr_scheduler'] + self.option['learning_rate_decay'],
+                        self.option['lr_scheduler'] + "{:.4e}".format(self.option['learning_rate_decay']),
                         self.option['weight_decay'],
         )
         output_name = output_name + '_SIM{}_AVL{}_CN{}_CP{}_RS{}_LG{}'.format(

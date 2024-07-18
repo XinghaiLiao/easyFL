@@ -414,9 +414,9 @@ class BasicServer(BasicParty):
         Args:
             current_round (int): the current communication round
         """
-        if self.lr_scheduler_type == -1:
+        if self.lr_scheduler_type == '-1' or self.lr_scheduler_type.lower()=='constant':
             return
-        elif self.lr_scheduler_type == 0:
+        elif self.lr_scheduler_type == '0' or self.lr_scheduler_type.lower()=='step':
             """eta_{round+1} = DecayRate * eta_{round}"""
             self.learning_rate *= self.decay_rate
             for c in self.clients:
