@@ -3,7 +3,7 @@ from .benchmark import data_root
 communicator = None
 _data_root = data_root
 _name = None
-__version__ = "v0.2.12"
+__version__ = "v0.2.13"
 class VirtualCommunicator:
     """
     Communicator that simulates the communication phase between any two objects
