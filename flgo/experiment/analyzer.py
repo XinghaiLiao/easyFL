@@ -267,7 +267,7 @@ class Selector:
             res.append(Record.create_group(groups[g]))
         return res, list(groups.keys())
 
-def load_records(task:str, algorithm: List[str]|str, filter:dict={}):
+def load_records(task:str, algorithm: Union[str|List[str]], filter:dict={}):
     r"""
     Load the records of training.
 
