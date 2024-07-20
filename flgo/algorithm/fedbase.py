@@ -416,11 +416,14 @@ class BasicServer(BasicParty):
         """
         if self.lr_scheduler_type == '-1' or self.lr_scheduler_type.lower()=='constant':
             return
-        elif self.lr_scheduler_type == '0' or self.lr_scheduler_type.lower()=='step':
+        elif self.lr_scheduler_type == '0' or self.lr_scheduler_type.lower().startwith('step'):
             """eta_{round+1} = DecayRate * eta_{round}"""
-            self.learning_rate *= self.decay_rate
-            for c in self.clients:
-                c.set_learning_rate(self.learning_rate)
+            step_size = self.lr_scheduler_type.split('_')
+            step_size = max(int(step_size[-1]), 1) if len(step_size)>1 else 1
+            if current_round>0 and current_round%step_size==0:
+                self.learning_rate *= self.decay_rate
+                for c in self.clients:
+                    c.set_learning_rate(self.learning_rate)
         elif self.lr_scheduler_type == '1' or self.lr_scheduler_type=='divide_by_round':
             """eta_{round+1} = eta_0/(round+1)"""
             self.learning_rate = self.option['learning_rate'] * 1.0 / (current_round + 1)
