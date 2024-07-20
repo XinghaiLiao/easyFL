@@ -101,7 +101,7 @@ class TaskPipe(BuiltinClassPipe):
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
             cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
             if running_time_option['train_holdout']>0 and running_time_option['local_test']:
-                cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
+                cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
             else:
                 cdata_test = None
             task_data[cname] = {'train':cdata_train, 'val':cdata_val, 'test': cdata_test}

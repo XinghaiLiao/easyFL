@@ -73,7 +73,7 @@ class TaskPipe(FromDatasetPipe):
                 for cdata_i in cdataset:
                     cdata_train_i, cdata_val_i = self.split_dataset(cdata_i, running_time_option['train_holdout'])
                     if cdata_val_i is not None:
-                        cdata_val_i, cdata_test_i = self.split_dataset(cdata_val_i, 0.5)
+                        cdata_val_i, cdata_test_i = self.split_dataset(cdata_val_i, running_time_option['local_test_ratio'])
                     else:
                         cdata_test_i = None
                     if cdata_train_i is not None: cdata_trains.append(cdata_train_i)
@@ -88,7 +88,7 @@ class TaskPipe(FromDatasetPipe):
                 cdata = self.TaskDataset(train_data, self.feddata[cname]['data'])
                 cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
                 if running_time_option['train_holdout']>0 and running_time_option['local_test']:
-                    cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
+                    cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
                 else:
                     cdata_test = None
                 task_data[cname] = {'train':cdata_train, 'val':cdata_val, 'test': cdata_test}

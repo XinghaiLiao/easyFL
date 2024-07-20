@@ -71,7 +71,7 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
             cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
             if running_time_option['train_holdout']>0 and running_time_option['local_test']:
-                cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
+                cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
             else:
                 cdata_test = None
             c_all_data = [cdata_train, cdata_val, cdata_test]
@@ -203,7 +203,7 @@ class BuiltinClassPipe(flgo.benchmark.base.BasicTaskPipe):
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
             cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
             if running_time_option['train_holdout']>0 and running_time_option['local_test']:
-                cdata_val, cdata_test = self.split_dataset(cdata_val, 0.5)
+                cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
             else:
                 cdata_test = None
             if cdata_train is not None: cdata_train.num_classes = num_classes

@@ -78,7 +78,7 @@ class TaskPipe(FromDatasetPipe):
             if running_time_option['train_holdout'] > 0:
                 cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
                 if running_time_option['local_test']:
-                    cdata_valid, cdata_test = self.split_dataset(cdata_valid, 0.5)
+                    cdata_valid, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
                 else:
                     cdata_test = None
             else:

@@ -59,7 +59,7 @@ import flgo.algorithm
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available'] # sampling options for the default sampling method in flgo.algorihtm.fedbase
 agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
-default_option_dict = {'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False,'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'t', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+default_option_dict = {'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'t', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 if zmq is not None: _ctx = zmq.Context()
 else: _ctx = None
@@ -146,6 +146,7 @@ def read_option_from_command():
     parser.add_argument('--train_holdout', help='the rate of holding out the validation dataset from all the local training datasets', type=float, default=0.1)
     parser.add_argument('--test_holdout', help='the rate of holding out the validation dataset from the testing datasets owned by the server', type=float, default=0.0)
     parser.add_argument('--local_test', help='if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.', action="store_true", default=False)
+    parser.add_argument('--local_test_ratio', help='valid only if local_test==True, the ratio of testing part from train_holdout part', type=float, default=0.5)
     # realistic machine config
     parser.add_argument('--seed', help='seed for random initialization;', type=int, default=0)
     parser.add_argument('--dataseed', help='seed for random initialization for data train/val/test partition', type=int, default=0)
@@ -546,6 +547,56 @@ def gen_task_by_(benchmark, partitioner:flgo.benchmark.partition.BasicPartitione
         print('Warning: Failed to visualize the partitioned result where there exists error {}'.format(e))
     finally:
         return task_path
+
+def gen_direct_task_from_file(task: str, config_file: str, target_path='.', overwrite:bool=False):
+    r"""
+
+    Args:
+        task (str): the name of the task
+        config_file (str): the path of the configuration file
+        target_path: (str): the path to store the benchmark
+        overwrite (bool): overwrite current benchmark if there already exists a benchmark of the same name
+    Returns:
+        task (str): the task name
+    """
+    if not os.path.exists(config_file): raise FileNotFoundError('File {} not found.'.format(config_file))
+    target_path = os.path.abspath(target_path)
+    bmk_path = os.path.join(target_path, task)
+    if os.path.exists(bmk_path):
+        if not overwrite:
+            warnings.warn('There already exists a task `{}`'.format(task))
+            return '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+        else:
+            shutil.rmtree(bmk_path)
+    temp_path = os.path.join(flgo.benchmark.path, 'toolkits', 'direct')
+    shutil.copytree(temp_path, bmk_path)
+    shutil.copyfile(config_file, os.path.join(bmk_path, 'config.py'))
+    bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+    bmk_config = importlib.import_module('.'.join([bmk_module, 'config']))
+    train_data = getattr(bmk_config, 'train_data')
+    # generate federated task
+    # save the generated federated benchmark
+    # initialize task pipe
+    try:
+        # create task architecture
+        os.mkdir(os.path.join(bmk_path, 'record'))
+        os.mkdir(os.path.join(bmk_path, 'log'))
+        info = {'benchmark': bmk_module, 'bmk_path': bmk_path}
+        info['scene'] = 'horizontal'
+        info['num_clients'] = 'unknown'
+        with open(os.path.join(bmk_path, 'info'), 'w') as outf:
+            json.dump(info, outf)
+        data_json = {"client_names": [f"Client{cid}" for cid in range(len(train_data))]}
+        with open(os.path.join(bmk_path, 'data.json'), 'w') as outf2:
+            json.dump(data_json, outf2)
+        print('Task {} has been successfully generated.'.format(bmk_path))
+    except Exception as e:
+        print(e)
+        shutil.rmtree(bmk_path)
+        print("Failed to saving splited dataset.")
+        return None
+    # save visualization
+    return bmk_path
 
 def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = None, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal'):
     r"""
