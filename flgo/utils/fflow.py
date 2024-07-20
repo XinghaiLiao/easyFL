@@ -156,7 +156,7 @@ def read_option_from_command():
     parser.add_argument('--parallel_type', help="the type of parallel: 't' means multi-threading and 'p' means multi-processing", type=str, default = 't')
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
     parser.add_argument('--pin_memory', help='pin_memory of DataLoader', action="store_true", default=False)
-    parser.add_argument('--no_drop_last', help='not to drop_last option of DataLoader, default is False', action="store_true", default=False)
+    parser.add_argument('--drop_last', help='drop_last option of DataLoader, default is False', action="store_true", default=False)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
 
     """Simulator Options"""
@@ -643,7 +643,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         parallel_type       (str):  the type of parallel: 't' means multi-threading and 'p' means multi-processing, default = 't'
         num_workers         (int):  the number of workers of DataLoader, default=0
         pin_memory          (bool): pin_memory of DataLoader, default=False
-        no_drop_last        (bool): not to drop_last option of DataLoader, default is False
+        drop_last           (bool): drop_last option of DataLoader, default is False
         test_batch_size     (int):  the batch_size used in testing phase, default=512
         availability        (str):  client availability mode, default = 'IDL'
         connectivity        (str):  client connectivity mode, default = 'IDL'

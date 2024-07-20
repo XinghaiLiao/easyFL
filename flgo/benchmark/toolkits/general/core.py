@@ -42,6 +42,7 @@ class TaskPipe(fbb.FromDatasetPipe):
         self.my_split_dataset = split_dataset
 
     def split_dataset(self, dataset, p=0.0):
+        if dataset is None: return None, None
         if self.my_split_dataset is None:
             if p == 0: return dataset, None
             s1 = int(len(dataset) * p)
