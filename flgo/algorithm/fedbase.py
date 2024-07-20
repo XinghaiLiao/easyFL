@@ -421,11 +421,28 @@ class BasicServer(BasicParty):
             self.learning_rate *= self.decay_rate
             for c in self.clients:
                 c.set_learning_rate(self.learning_rate)
-        elif self.lr_scheduler_type == 1:
+        elif self.lr_scheduler_type == '1':
             """eta_{round+1} = eta_0/(round+1)"""
             self.learning_rate = self.option['learning_rate'] * 1.0 / (current_round + 1)
             for c in self.clients:
                 c.set_learning_rate(self.learning_rate)
+        elif self.lr_scheduler_type.startwith('multistep'):
+            """eta_{step_round} = DecayRate * eta_{current}"""
+            rounds = self.lr_scheduler_type.split('_')[1:]
+            if len(rounds)==0: return
+            rounds = [int(r) for r in rounds]
+            if current_round in rounds:
+                self.learning_rate *= self.decay_rate
+                for c in self.clients:
+                    c.set_learning_rate(self.learning_rate)
+        elif self.lr_scheduler_type.startwith('ratiostep'):
+            """eta_{k*int(num_rounds*ratio)} = DecayRate * eta_{current}"""
+            ratio = min(float(self.lr_scheduler_type.split('_')[-1]), 1.0)
+            step_round = max(int(self.num_rounds*ratio), 1)
+            if current_round%step_round:
+                self.learning_rate *= self.decay_rate
+                for c in self.clients:
+                    c.set_learning_rate(self.learning_rate)
 
     def sample(self):
         r"""
