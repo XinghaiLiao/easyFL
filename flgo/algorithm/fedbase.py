@@ -421,7 +421,7 @@ class BasicServer(BasicParty):
             self.learning_rate *= self.decay_rate
             for c in self.clients:
                 c.set_learning_rate(self.learning_rate)
-        elif self.lr_scheduler_type == '1':
+        elif self.lr_scheduler_type == '1' or self.lr_scheduler_type=='divide_by_round':
             """eta_{round+1} = eta_0/(round+1)"""
             self.learning_rate = self.option['learning_rate'] * 1.0 / (current_round + 1)
             for c in self.clients:
