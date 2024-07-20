@@ -67,7 +67,8 @@ class TaskPipe(fbb.FromDatasetPipe):
         train_data = self.train_data
         test_data = self.test_data
         val_data = self.val_data
-        if val_data is None: server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
+        if val_data is None and test_data is not None:
+            server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
         else: server_data_test, server_data_val = test_data, val_data
         task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
         for cid, cdata in enumerate(train_data):
