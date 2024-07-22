@@ -1,4 +1,5 @@
 import copy
+import torch
 from tqdm import trange
 from flgo.algorithm.fedbase import BasicServer
 from flgo.algorithm.fedbase import BasicClient
@@ -65,6 +66,7 @@ class Client(BasicClient):
                     batch_data = self.calculator.to_device(batch_data)
                     loss = self.calculator.compute_loss(self.model, batch_data)['loss']
                     loss.backward()
+                    if self.clip_grad > 0: torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(), max_norm=self.clip_grad)
                     optimizer.step()
                 val_metric = self.test(self.model, 'val')
                 if (self.larger_is_better and val_metric[self.tune_key]>op_met[self.tune_key]) or ((not self.larger_is_better) and val_metric[self.tune_key]<op_met[self.tune_key]):

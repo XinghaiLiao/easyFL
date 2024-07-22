@@ -125,6 +125,7 @@ class Client(flgo.algorithm.fedbase.BasicClient):
                         pi_grad[j] += torch.sum(pm.grad.data*pj)
                 pi.grad += pi_grad
             pi_optim.step()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=self.core_model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         self.p = pi
         self.model = fmodule._model_average(self.core_models, self.p)

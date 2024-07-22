@@ -32,5 +32,6 @@ class Client(BasicClient):
                 loss_proximal += torch.sum(torch.pow(pm - ps, 2))
             loss = loss + 0.5 * self.mu * loss_proximal
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         return

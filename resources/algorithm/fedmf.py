@@ -4,8 +4,8 @@ This is a non-official implementation of the work 'Secure Federated Matrix Facto
 import collections
 import torch
 import copy
-from flgo.algorithm.fedbase import BasicServer
-from flgo.algorithm.fedbase import BasicClient
+from .fedbase import BasicServer
+from .fedbase import BasicClient
 from phe import paillier
 import numpy as np
 from tqdm import tqdm
@@ -119,6 +119,8 @@ class Client(BasicClient):
             # predict = global_model(batch_data, self.model.get_embedding())
             # loss = ((batch_data['rating']-predict)**2).sum()/len(batch_data['item_id'])
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(), max_norm=self.clip_grad)
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=global_model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         global_model.to(torch.device('cpu'))
         gradient = (global_model.get_embedding()-original_model.get_embedding()).detach().cpu().numpy()

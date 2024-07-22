@@ -60,6 +60,7 @@ class Client(flgo.algorithm.fedbase.BasicClient):
             for pm, pu in zip(self.model.parameters(), u.parameters()):
                 loss += 0.5*self.lmbd/self.alpha*torch.sum((pm - pu)**2)
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         with torch.no_grad():
             for pm, pl in zip(model.parameters(), self.model.parameters()):

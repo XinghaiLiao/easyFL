@@ -29,6 +29,7 @@ class Server(flgo.algorithm.fedbase.BasicServer):
         self.init_algo_para({'lmbd':0.1})
         self.num_classes = len(collections.Counter([d[-1] for d in self.test_data]))
         self.sample_option = 'full'
+        self.output_layer = list(self.model.state_dict().keys())[-1].split('.')[0]
         with torch.no_grad():
             x = self.test_data[0]
             self.model.to('cpu')
@@ -65,6 +66,7 @@ class Server(flgo.algorithm.fedbase.BasicServer):
 class Client(flgo.algorithm.fedbase.BasicClient):
     def initialize(self):
         self.model = copy.deepcopy(self.server.model).to('cpu')
+        self.output_layer = self.server.output_layers
         label_counter = collections.Counter([d[-1] for d in self.train_data])
         self.sizes_label = np.zeros(self.num_classes)
         for lb in range(self.num_classes):
@@ -104,14 +106,18 @@ class Client(flgo.algorithm.fedbase.BasicClient):
 
     @fmodule.with_multi_gpus
     def train(self, model, cg):
-        optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, momentum=self.momentum, weight_decay=self.weight_decay)
+        feature_maps = []
+        def hook(model, input, output):
+            feature_maps.append(input)
+        getattr(self.model, self.output_layer).register_forward_hook(hook)
+        optimizer = self.calculator.get_optimizer(self.model, lr=self.learning_rate, momentum=self.momentum, weight_decay=self.weight_decay)
         for iter in range(self.num_steps):
             model.zero_grad()
             batch_data = self.calculator.to_device(self.get_batch_data())
-            protos = self.model.encoder(batch_data[0])
             labels = batch_data[-1]
-            outputs = self.model.head(protos)
-            loss_erm = self.calculator.criterion(outputs, labels)
+            model.zero_grad()
+            loss_erm = self.calculator.compute_loss(model, batch_data)['loss']
+            protos = feature_maps.pop()[0]
             protos_new = copy.deepcopy(protos.data)
             for i,label in enumerate(labels):
                 if label.item() in cg.keys():
@@ -119,5 +125,6 @@ class Client(flgo.algorithm.fedbase.BasicClient):
             loss_reg = self.loss_mse(protos_new, protos)
             loss = loss_erm + self.lmbd*loss_reg
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         return

@@ -193,6 +193,7 @@ class Client(flgo.algorithm.fedbase.BasicClient):
             batch_data = self.calculator.to_device(batch_data)
             loss = self.calculator.compute_loss(self.model, batch_data)['loss']
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         for n,p in self.model.named_parameters():
             p.requires_grad = (n.split('.')[0]!='head')
@@ -216,6 +217,7 @@ class Client(flgo.algorithm.fedbase.BasicClient):
                 loss_reg = self.mse_loss(protos_new, protos)
             loss = loss_erm + self.lmbd*loss_reg
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
 
         dataloader = self.calculator.get_dataloader(self.train_data, self.batch_size)

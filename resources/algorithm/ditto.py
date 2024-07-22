@@ -34,6 +34,7 @@ class Client(BasicClient):
             model.zero_grad()
             loss_global = self.calculator.compute_loss(model, batch_data)['loss']
             loss_global.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer_global.step()
             # local solver
             self.model.zero_grad()
@@ -43,6 +44,7 @@ class Client(BasicClient):
                 loss_proximal += torch.sum(torch.pow(pm - ps, 2))
             loss_local = loss_local + 0.5 * self.mu * loss_proximal
             loss_local.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(), max_norm=self.clip_grad)
             optimizer_local.step()
         self.model = self.model.to('cpu')
         return

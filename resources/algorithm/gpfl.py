@@ -145,6 +145,7 @@ class Client(flgo.algorithm.fedbase.BasicClient):
             loss = loss_erm + loss_alg + self.lmbd *loss_mlg  + self.mu*loss_l2
             optimizer.zero_grad()
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         return
 

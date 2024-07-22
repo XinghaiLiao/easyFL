@@ -27,6 +27,7 @@ class Client(flgo.algorithm.fedbase.BasicClient):
             batch_data = self.get_batch_data()
             loss = self.calculator.compute_loss(model, batch_data)['loss']
             loss.backward()
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
 
             # Step 2. estimate the gradient at w_tmp by ▽w_tmp(D') where D' is another batch of data independent to D
