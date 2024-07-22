@@ -10,7 +10,7 @@ import torch
 class Server(BasicServer):
     def initialize(self, *args, **kwargs):
         self.init_algo_para({'eta': 1.0})
-        self.cg = self.model.zeros_like()
+        self.cg = self.model.zeros_like().to('cpu')
         self.sample_option = 'uniform'
 
     def pack(self, client_id, *args, **kwargs):
@@ -27,11 +27,14 @@ class Server(BasicServer):
         dys, dcs = res['dy'], res['dc']
         # aggregate
         self.model, self.cg = self.aggregate(dys, dcs)
+        self.model.to(self.device)
         return
 
     def aggregate(self, dys, dcs):
         # x <-- x + eta_g * dx = x + eta_g * average(dys)
         # c <-- c + |S|/N * dc = c + 1/N * sum(dcs)
+        self.model = self.model.to('cpu')
+        self.cg = self.cg.to('cpu')
         new_model = self.model + self.eta * fmodule._model_average(dys)
         new_c = self.cg + fmodule._model_sum(dcs)/self.num_clients
         return new_model, new_c
@@ -62,6 +65,8 @@ class Client(BasicClient):
         # if self.c is None: self.c = copy.deepcopy(cg)
         if self.c is None: self.c = cg.zeros_like()
         self.c.freeze_grad()
+        self.c = self.c.to(self.device)
+        cg = cg.to(self.device)
         optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay,
                                                   momentum=self.momentum)
         for iter in range(self.num_steps):
@@ -72,6 +77,7 @@ class Client(BasicClient):
             # y_i <-- y_i - eta_l ( g_i(y_i)-c_i+c )  =>  g_i(y_i)' <-- g_i(y_i)-c_i+c
             for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()):
                 pm.grad = pm.grad - pc + pcg
+            if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         dy = model - src_model
         dc = -dy/(self.num_steps * self.learning_rate) - cg
@@ -91,5 +97,8 @@ class Client(BasicClient):
     def reply(self, svr_pkg):
         model, c_g = self.unpack(svr_pkg)
         dy, dc = self.train(model, c_g)
+        self.c = self.c.to('cpu')
+        dc = dc.to('cpu')
+        dy = dy.to('cpu')
         cpkg = self.pack(dy, dc)
         return cpkg
