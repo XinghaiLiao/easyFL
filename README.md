@@ -4,7 +4,7 @@
 
 <!-- [![article-red](https://img.shields.io/badge/pypi-v0.0.11-red)](https://pypi.org/project/flgo/)
 [![arxiv-orange](https://img.shields.io/badge/pypi-v0.0.11-red)](https://pypi.org/project/flgo/) -->
-[![PyPI](https://img.shields.io/badge/pypi-v0.2.7-yellow)](https://pypi.org/project/flgo/)
+[![PyPI](https://img.shields.io/badge/pypi-v0.2.16-yellow)](https://pypi.org/project/flgo/)
 [![docs](https://img.shields.io/badge/docs-maintaining-green)](https://flgo-xmu.github.io/)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/WwZzz/easyFL/blob/FLGo/LICENSE)
 
@@ -45,7 +45,7 @@ git clone https://github.com/WwZzz/easyFL.git
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 
 <center>
-<img src="https://github.com/WwZzz/easyFL/assets/20792079/5ed4dc4b-6cc1-4cf9-a42a-c1510246c415" width=180/>
+<img src="https://github.com/user-attachments/assets/0e9e6435-54a0-49ae-a216-632f4d72f1f7" width=180/>
 <img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=180/>
 </center>
 
