@@ -298,8 +298,15 @@ class TaskPipe(BasicTaskPipe):
         # rearrange data for clients
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'])
-            cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
-            task_data[cname] = {'train': cdata_train, 'val': cdata_val}
+            if running_time_option['train_holdout'] > 0.0:
+                cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
+                if running_time_option['local_test'] and cdata_val is not None and len(cdata_val)>1:
+                    cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
+                else:
+                    cdata_test = None
+            else:
+                cdata_train, cdata_val, cdata_test = cdata, None, None
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val, 'test': cdata_test}
         return task_data
 
 class TaskCalculator(BasicTaskCalculator):
