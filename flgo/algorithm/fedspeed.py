@@ -32,27 +32,28 @@ class Client(BasicClient):
         global_model.freeze_grad()
         self.local_grad_controller.to(self.device)
         optimizer = self.calculator.get_optimizer(model, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
-        optimizer_tmp = self.calculator.get_optimizer(model_tmp, lr=self.learning_rate, weight_decay=self.weight_decay, momentum=self.momentum)
         for iter in range(self.num_steps):
             # get a batch of data
             optimizer.zero_grad()
-            optimizer_tmp.zero_grad()
             batch_data = self.get_batch_data()
-            # calculate the loss of the model on batched dataset through task-specified calculator
             loss1 = self.calculator.compute_loss(model_tmp, batch_data)['loss']
             loss1.backward()
             grad1 = [p.grad for p in model_tmp.parameters()]
-            optimizer_tmp.step()
-            optimizer_tmp.zero_grad()
+            # grad1_norm = torch.norm(torch.cat([g.view(-1) for g in grad1 if g is not None]), 2)
+            with torch.no_grad():
+                for p in model_tmp.parameters():
+                    if p.grad is not None: p.data = p.data + self.rho*p.grad
+            model_tmp.zero_grad()
             loss2 = self.calculator.compute_loss(model_tmp, batch_data)['loss']
             loss2.backward()
             grad2 = [p.grad for p in model_tmp.parameters()]
             quasi_grad = [(1-self.alpha)*g1+self.alpha*g2 if g1 is not None else None for g1, g2 in zip(grad1, grad2)]
             with torch.no_grad():
-                for p,qg,lg,m in zip(model.parameters(), quasi_grad, self.local_grad_controller.parameters(), global_model.parameters()):
-                    p.grad = qg - lg + 1.0/self.lmbd*(p.detach() -  m)
+                for p,qg,lg,gm in zip(model.parameters(), quasi_grad, self.local_grad_controller.parameters(), global_model.parameters()):
+                    p.grad = qg - lg + 1.0/self.lmbd*(p - gm)
             if self.clip_grad > 0: torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
+            model_tmp.load_state_dict(model.state_dict())
         self.local_grad_controller = self.local_grad_controller - 1.0/self.lmbd * (model - global_model)
         with torch.no_grad():
             for pm, lg in zip(model.parameters(), self.local_grad_controller.parameters()):
