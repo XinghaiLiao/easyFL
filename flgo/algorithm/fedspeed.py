@@ -19,15 +19,7 @@ class Client(BasicClient):
 
     @fmodule.with_multi_gpus
     def train(self, model):
-        r"""
-        Standard local_movielens_recommendation training procedure. Train the transmitted model with
-        local_movielens_recommendation training dataset.
-
-        Args:
-            model (FModule): the global model
-        """
         model.train()
-        model_tmp = copy.deepcopy(model)
         global_model = copy.deepcopy(model)
         global_model.freeze_grad()
         self.local_grad_controller.to(self.device)
@@ -38,19 +30,23 @@ class Client(BasicClient):
             optimizer.zero_grad()
             batch_data = self.get_batch_data()
             # Line 7 in Algo.1
-            loss1 = self.calculator.compute_loss(model_tmp, batch_data)['loss']
+            loss1 = self.calculator.compute_loss(model, batch_data)['loss']
             loss1.backward()
-            grad1 = [p.grad for p in model_tmp.parameters()]
+            grad1 = [p.grad for p in model.parameters()]
             # Line 8 in Algo.1
             grad1_norm = torch.norm(torch.cat([g.view(-1) for g in grad1 if g is not None]), 2)
             with torch.no_grad():
-                for p in model_tmp.parameters():
-                    if p.grad is not None: p.data = p.data + self.rho*p.grad/grad1_norm
-            model_tmp.zero_grad()
+                for p, g in zip(model.parameters(), grad1):
+                    p.data = p.data + self.rho * g / grad1_norm
+            model.zero_grad()
             # Line 9 in Algo.1
-            loss2 = self.calculator.compute_loss(model_tmp, batch_data)['loss']
+            loss2 = self.calculator.compute_loss(model, batch_data)['loss']
             loss2.backward()
-            grad2 = [p.grad for p in model_tmp.parameters()]
+            grad2 = [p.grad for p in model.parameters()]
+            model.zero_grad()
+            with torch.no_grad():
+                for p, g in zip(model.parameters(),grad1):
+                    p.data = p.data - self.rho * g / grad1_norm
             # Line 10 in Algo.1
             quasi_grad = [(1.0-self.alpha)*g1+self.alpha*g2 if g1 is not None else None for g1, g2 in zip(grad1, grad2)]
             # Line 11 in Algo.1
@@ -59,7 +55,7 @@ class Client(BasicClient):
                     p.grad = qg - self.lmbd * hsgi
             if self.clip_grad > 0: torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
-            model_tmp.load_state_dict(copy.deepcopy(model.state_dict()))
+            # model_tmp.load_state_dict(copy.deepcopy(model.state_dict()))
         # Line 13 in Algo.1
         self.local_grad_controller = self.local_grad_controller + (model - global_model)
         # Line 14 in Algo.1
