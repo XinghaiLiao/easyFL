@@ -328,8 +328,9 @@ class BasicTaskPipe(AbstractTaskPipe):
         Returns:
             The two split parts
         """
-        if p == 0: return dataset, None
-        s1 = int(len(dataset) * p)
+        if dataset is None: return None, None
+        if p == 0 or len(dataset)<2: return dataset, None
+        s1 = max(int(len(dataset) * p), 1)
         s2 = len(dataset) - s1
         if s1==0:
             return dataset, None
