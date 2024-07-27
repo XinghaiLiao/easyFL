@@ -70,15 +70,15 @@ class DataPipeTaskPipe(BasicTaskPipe):
         for cid, cname in enumerate(self.feddata['client_names']):
             cdata = self.TaskDataset(train_data, self.feddata[cname]['data'])
             if running_time_option['train_holdout'] > 0:
-                cdata_train, cdata_valid = self.split_dataset(cdata, running_time_option['train_holdout'])
+                cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
                 if running_time_option['local_test']:
-                    cdata_valid, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
+                    cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
                 else:
                     cdata_test = None
             else:
                 cdata_train = cdata
-                cdata_valid, cdata_test = None, None
-            task_data[cname] = {'train': cdata_train, 'val': cdata_valid, 'test': cdata_test}
+                cdata_val, cdata_test = None, None
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val, 'test': cdata_test}
         return task_data
 
 class GeneralCalculator(BasicTaskCalculator):
