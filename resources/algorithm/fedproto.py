@@ -29,7 +29,7 @@ class Server(flgo.algorithm.fedbase.BasicServer):
         self.init_algo_para({'lmbd':0.1})
         self.num_classes = len(collections.Counter([d[-1] for d in self.test_data]))
         self.sample_option = 'full'
-        self.output_layer = list(self.model.state_dict().keys())[-1].split('.')[0]
+        self.output_layer = ".".join([f'[{m}]' if m.isdigit() else f'{m}' for m in list(self.model.state_dict().keys())[-1].split('.')[:-1]])
         with torch.no_grad():
             x = self.test_data[0]
             self.model.to('cpu')
@@ -109,7 +109,7 @@ class Client(flgo.algorithm.fedbase.BasicClient):
         feature_maps = []
         def hook(model, input, output):
             feature_maps.append(input)
-        getattr(self.model, self.output_layer).register_forward_hook(hook)
+        eval("self.model.{}".format(self.output_layer)).register_forward_hook(hook)
         optimizer = self.calculator.get_optimizer(self.model, lr=self.learning_rate, momentum=self.momentum, weight_decay=self.weight_decay)
         for iter in range(self.num_steps):
             model.zero_grad()
