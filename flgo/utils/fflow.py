@@ -598,6 +598,35 @@ def gen_direct_task_from_file(task: str, config_file: str, target_path='.', over
     # save visualization
     return bmk_path
 
+def load_task_data(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test=False, local_test_ratio=0.5, pin_memory=False, seed=0):
+    r"""
+    Load task datasets from a given task and some configurations.
+
+    Args:
+        task (str): the dictionary of the federated task
+        train_holdout (float): the ratio of holdout local data for each client (e.g., local validation data)
+        test_holdout (float): the ratio of holdout local data for the server (e.g., global validation data or public data)
+        local_test (bool): whether to split the holdout training data again
+        local_test_ratio (float): the ratio of twice-holdout local data (e.g., local testing data)
+        pin_memory (bool): whether to use pin memory or not
+        seed (int): random seed for reproducibility
+
+    Returns:
+        task_data (dict): a dict consists of datasets for different parties in FL.
+    """
+    if not os.path.exists(task):
+        raise FileExistsError("Fedtask '{}' doesn't exist. Please generate the specified task by flgo.gen_task().")
+    with open(os.path.join(task, 'info'), 'r') as inf:
+        task_info = json.load(inf)
+    benchmark = task_info['benchmark']
+    if 'bmk_path' in task_info and os.path.isdir(task_info['bmk_path']): sys.path.append(task_info['bmk_path'])
+    core_module = '.'.join([benchmark, 'core'])
+    task_pipe = getattr(importlib.import_module(core_module), 'TaskPipe')(task)
+    setup_seed(seed)
+    option = {'train_holdout':train_holdout, 'test_holdout':test_holdout, 'local_test':local_test, 'local_test_ratio':local_test_ratio, 'pin_memory':pin_memory}
+    task_data = task_pipe.load_data(option)
+    return task_data
+
 def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = None, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal'):
     r"""
     Initialize a runner in FLGo, which is to optimize a model on a specific task (i.e. IID-mnist-of-100-clients) by the selected federated algorithm.
