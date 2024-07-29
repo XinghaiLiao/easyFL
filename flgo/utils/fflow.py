@@ -37,10 +37,7 @@ try:
     import yaml
 except ModuleNotFoundError:
     warnings.warn("Module pyyaml is not installed. The configuration cannot be loaded by .yml file.")
-try:
-    import ray
-except:
-    ray = None
+
 import flgo.simulator
 import flgo.simulator.default_simulator
 import flgo.simulator.base
