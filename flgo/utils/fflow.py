@@ -1347,7 +1347,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
             res.append(rec)
     return res, es_key, es_drct
 
-def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None):
+def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None, mmap=False):
     """
         Tune hyper-parameters for the specific (task, algorithm, model) in parallel.
         Args:
@@ -1374,7 +1374,10 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     for op in options:op['log_file'] = True
     if scheduler is None:
         scheduler = flgo.experiment.device_scheduler.BasicScheduler(device_ids)
-    outputs, es_key, es_drct = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
+    if mmap:
+        outputs, es_key, es_drct = run_in_parallel_by_mmap(task, algorithm, options, model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
+    else:
+        outputs, es_key, es_drct = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
     if len(outputs)==0:
         warnings.warn("All the groups of parameters had resulted in divergence of model training")
         return {}
@@ -1654,53 +1657,53 @@ def multi_init_and_run_by_mmap(runner_args:list, devices = [], scheduler=None):
         res.append(rec)
     return res
 
-def tune_by_mmap(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None):
-    """
-        Tune hyper-parameters for the specific (task, algorithm, model) in parallel.
-        Args:
-            task (str): the dictionary of the federated task
-            algorithm (module|class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
-            option (dict): the dict whose values should be of type list to construct the combinations
-            model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
-            Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
-            Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
-            scene (str): 'horizontal' or 'vertical' in current version of FLGo
-            scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
-        """
-    # generate combinations of hyper-parameters
-    if 'gpu' in option.keys():
-        device_ids = option['gpu']
-        option.pop('gpu')
-        if not isinstance(device_ids, Iterable): device_ids = [device_ids]
-    else:
-        device_ids = [-1]
-    keys = list(option.keys())
-    for k in keys: option[k] = [option[k]] if (not isinstance(option[k], Iterable) or isinstance(option[k], str)) else option[k]
-    para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
-    options = [{k:v for k,v in zip(keys, paras)} for paras in para_combs]
-    for op in options:op['log_file'] = True
-    if scheduler is None:
-        scheduler = flgo.experiment.device_scheduler.BasicScheduler(device_ids)
-    outputs, es_key, es_drct = run_in_parallel_by_mmap(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
-    if len(outputs)==0:
-        warnings.warn("All the groups of parameters had resulted in divergence of model training")
-        return {}
-    if es_drct<=0:
-        optimal_idx = int(np.argmin([min(output[es_key]) for output in outputs]))
-    else:
-        optimal_idx = int(np.argmax([max(output[es_key]) for output in outputs]))
-    optimal_para = options[optimal_idx]
-    print("The optimal combination of hyper-parameters is:")
-    print('-----------------------------------------------')
-    for k,v in optimal_para.items():
-        if k=='gpu': continue
-        print("{}\t|{}".format(k,v))
-    print('-----------------------------------------------')
-    op_round = np.argmin(outputs[optimal_idx][es_key]) if es_drct<=0 else np.argmax(outputs[optimal_idx][es_key])
-    op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
-    if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
-    print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
-    return optimal_para
+# def tune_by_mmap(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None):
+#     """
+#         Tune hyper-parameters for the specific (task, algorithm, model) in parallel.
+#         Args:
+#             task (str): the dictionary of the federated task
+#             algorithm (module|class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
+#             option (dict): the dict whose values should be of type list to construct the combinations
+#             model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
+#             Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
+#             Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
+#             scene (str): 'horizontal' or 'vertical' in current version of FLGo
+#             scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
+#         """
+#     # generate combinations of hyper-parameters
+#     if 'gpu' in option.keys():
+#         device_ids = option['gpu']
+#         option.pop('gpu')
+#         if not isinstance(device_ids, Iterable): device_ids = [device_ids]
+#     else:
+#         device_ids = [-1]
+#     keys = list(option.keys())
+#     for k in keys: option[k] = [option[k]] if (not isinstance(option[k], Iterable) or isinstance(option[k], str)) else option[k]
+#     para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
+#     options = [{k:v for k,v in zip(keys, paras)} for paras in para_combs]
+#     for op in options:op['log_file'] = True
+#     if scheduler is None:
+#         scheduler = flgo.experiment.device_scheduler.BasicScheduler(device_ids)
+#     outputs, es_key, es_drct = run_in_parallel_by_mmap(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
+#     if len(outputs)==0:
+#         warnings.warn("All the groups of parameters had resulted in divergence of model training")
+#         return {}
+#     if es_drct<=0:
+#         optimal_idx = int(np.argmin([min(output[es_key]) for output in outputs]))
+#     else:
+#         optimal_idx = int(np.argmax([max(output[es_key]) for output in outputs]))
+#     optimal_para = options[optimal_idx]
+#     print("The optimal combination of hyper-parameters is:")
+#     print('-----------------------------------------------')
+#     for k,v in optimal_para.items():
+#         if k=='gpu': continue
+#         print("{}\t|{}".format(k,v))
+#     print('-----------------------------------------------')
+#     op_round = np.argmin(outputs[optimal_idx][es_key]) if es_drct<=0 else np.argmax(outputs[optimal_idx][es_key])
+#     op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
+#     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
+#     print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
+#     return optimal_para
 
 def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
     r"""
