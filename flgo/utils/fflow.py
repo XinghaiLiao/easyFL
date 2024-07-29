@@ -1359,6 +1359,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
             Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
             scene (str): 'horizontal' or 'vertical' in current version of FLGo
             scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
+            mmap (bool): whether to load all the dataset into the shared memory where all the processes can directly access the dataset
         """
     # generate combinations of hyper-parameters
     if 'gpu' in option.keys():
