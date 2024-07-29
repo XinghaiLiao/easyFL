@@ -331,24 +331,42 @@ class BasicServer(BasicParty):
                 packages_received_from_clients.append(response_from_client_id)
         else:
             self.model = self.model.to(torch.device('cpu'))
-            # computing in parallel with torch.multiprocessing
+            try:
+                import ray
+            except:
+                ray = None
             paratype = self.option.get('parallel_type', None)
-            if paratype is not None and paratype=='t':
-                pool = dmp.Pool(self.num_parallels)
+            if paratype=='r' and ray is not None:
+                @ray.remote(num_gpus=min(len(communicate_clients), self.num_parallels)*1.0/len(self.gv.dev_list))
+                def wrap_communicate_with(server, client_id, package):
+                    return server.communicate_with(client_id, package)
+                for client_id in communicate_clients:
+                    server_pkg = self.pack(client_id, mtype)
+                    server_pkg['__mtype__'] = mtype
+                    self.clients[client_id].update_device(self.gv.apply_for_device())
+                    res_ref = wrap_communicate_with.remote(self, self.clients[client_id].id, server_pkg)
+                    packages_received_from_clients.append(res_ref)
+                ready_refs, remaining_refs = ray.wait(packages_received_from_clients, num_returns=len(communicate_clients), timeout=None)
+                packages_received_from_clients = ray.get(ready_refs)
             else:
-                pool = mp.Pool(self.num_parallels)
-            for client_id in communicate_clients:
-                server_pkg = self.pack(client_id, mtype)
-                server_pkg['__mtype__'] = mtype
-                self.clients[client_id].update_device(self.gv.apply_for_device())
-                args = (self.clients[client_id].id, server_pkg)
-                packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
-            pool.close()
-            pool.join()
-            packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
+                # computing in parallel with torch.multiprocessing
+                if paratype=='t':
+                    pool = dmp.Pool(self.num_parallels)
+                else:
+                    pool = mp.Pool(self.num_parallels)
+                for client_id in communicate_clients:
+                    server_pkg = self.pack(client_id, mtype)
+                    server_pkg['__mtype__'] = mtype
+                    self.clients[client_id].update_device(self.gv.apply_for_device())
+                    args = (self.clients[client_id].id, server_pkg)
+                    packages_received_from_clients.append(pool.apply_async(self.communicate_with, args=args))
+                pool.close()
+                pool.join()
+                packages_received_from_clients = list(map(lambda x: x.get(), packages_received_from_clients))
+
             self.model = self.model.to(self.device)
             for pkg in packages_received_from_clients:
-                for k,v in pkg.items():
+                for k, v in pkg.items():
                     if hasattr(v, 'to'):
                         try:
                             pkg[k] = v.to(self.device)
