@@ -6,9 +6,6 @@ import flgo.utils.fflow as fuf
 import torch
 import numpy as np
 import torch.utils.data as tud
-from multiprocessing.managers import SharedMemoryManager
-from multiprocessing import shared_memory
-from shared_memory_dict import SharedMemoryDict
 import sys
 
 def get_dict_size(obj, seen=None):
