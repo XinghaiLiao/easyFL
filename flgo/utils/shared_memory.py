@@ -56,15 +56,16 @@ def dataset2sharable(dataset):
         for j in range(item_size):
             res[j].append(dataset[i][j])
     for j in range(item_size):
-        if type(element_types[j]).__name__ in ['int', 'float', 'str']:
+        if element_types[j] in ['int', 'float', 'str']:
             res[j] = np.array(res[j])
-        elif type(element_types[j]).__name__ == 'ndarray':
+        elif element_types[j] == 'ndarray':
             res[j] = np.stack(res[j])
-        elif type(element_types[j]).__name__ == 'Tensor':
+        elif element_types[j] == 'Tensor':
             res[j] = torch.stack(res[j]).numpy()
         else:
             raise ValueError("Unsupported type")
     return res, element_types
+
 
 def sharable2dataset(res, element_types):
     return TmpDataset(res, element_types)
