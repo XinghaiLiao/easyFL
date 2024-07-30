@@ -1385,10 +1385,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     for op in options:op['log_file'] = True
     if scheduler is None:
         scheduler = flgo.experiment.device_scheduler.BasicScheduler(device_ids)
-    if mmap:
-        outputs, es_key, es_drct = run_in_parallel_by_mmap(task, algorithm, options, model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
-    else:
-        outputs, es_key, es_drct = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
+    outputs, es_key, es_drct = run_in_parallel(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler, mmap=mmap)
     if len(outputs)==0:
         warnings.warn("All the groups of parameters had resulted in divergence of model training")
         return {}
