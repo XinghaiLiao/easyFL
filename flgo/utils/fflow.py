@@ -1265,7 +1265,7 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
         res = (opt, s, pid)
         send_end.send(res)
 
-def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler = None):
+def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler = None, mmap=False):
     """
     Run different groups of hyper-parameters for one task and one algorithm in parallel.
 
@@ -1279,6 +1279,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
         scene (str): 'horizontal' or 'vertical' in current version of FLGo
         scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
+        mmap (bool): whether to load all the dataset into the shared memory where all the processes can directly access the dataset
 
     Returns:
         the returns of _call_by_process
@@ -1301,6 +1302,12 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
     if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
     es_key = None
     es_drct = None
+    task_meta = None
+    if mmap:
+        load_option = options[0] if len(options)>0 else {}
+        keywords = ['train_holdout', 'test_holdout', 'local_test', 'local_test_ratio']
+        task_data = load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords})
+        task_meta = fus.create_meta_for_task(task_data)
     while True:
         for oid in range(len(options)):
             opt = options[oid]
@@ -1311,7 +1318,10 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                     else:
                         opt['gpu'] = available_device
                         recv_end, send_end = multiprocessing.Pipe(False)
-                        option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
+                        if mmap:
+                            option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process_with_meta, args=(task_meta, task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
+                        else:
+                            option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
                         option_state[oid]['recv'] = recv_end
                         option_state[oid]['p'].start()
                         scheduler.add_process(option_state[oid]['p'].pid)
@@ -1399,93 +1409,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
     return optimal_para
 
-def run_in_parallel_by_mmap(task: str, algorithm, options:list = [], model=None, devices = [], Logger:flgo.experiment.logger.BasicLogger = flgo.experiment.logger.simple_logger.SimpleLogger, Simulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler = None):
-    """
-    Run different groups of hyper-parameters for one task and one algorithm in parallel.
-
-    Args:
-        task (str): the dictionary of the federated task
-        algorithm (module|class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
-        options (list): the configurations of different groups of hyper-parameters
-        model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
-        devices (list): the list of IDs of devices
-        Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
-        Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
-        scene (str): 'horizontal' or 'vertical' in current version of FLGo
-        scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
-
-    Returns:
-        the returns of _call_by_process
-    """
-    try:
-        # init multiprocess
-        torch.multiprocessing.set_start_method('spawn', force=True)
-        torch.multiprocessing.set_sharing_strategy('file_system')
-    except:
-        pass
-    if model is None:
-        model_name = None
-    else:
-        if not hasattr(model, '__module__') and hasattr(model, '__name__'):
-            model_name = model.__name__
-        else:
-            model_name = model
-    algorithm_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
-    option_state = {oid:{'p':None, 'completed':False, 'output':None, 'option_in_queue':False, 'recv':None, } for oid in range(len(options))}
-    if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
-    es_key = None
-    es_drct = None
-    load_option = options[0] if len(options)>0 else {}
-    keywords = ['train_holdout', 'test_holdout', 'local_test', 'local_test_ratio']
-    task_data = load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords})
-    task_meta = fus.create_meta_for_task(task_data)
-    while True:
-        for oid in range(len(options)):
-            opt = options[oid]
-            if option_state[oid]['p'] is None:
-                if not option_state[oid]['completed']:
-                    available_device = scheduler.get_available_device(opt)
-                    if available_device is None: continue
-                    else:
-                        opt['gpu'] = available_device
-                        recv_end, send_end = multiprocessing.Pipe(False)
-                        option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process_with_meta, args=(task_meta, task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
-                        option_state[oid]['recv'] = recv_end
-                        option_state[oid]['p'].start()
-                        scheduler.add_process(option_state[oid]['p'].pid)
-                        print('Process {} was created for args {}'.format(option_state[oid]['p'].pid,(task, algorithm_name, opt, model_name, Logger, Simulator, scene)))
-            else:
-                if option_state[oid]['p'].exitcode is not None:
-                    tmp = option_state[oid]['recv'].recv()
-                    scheduler.remove_process(tmp[-1])
-                    try:
-                        option_state[oid]['p'].terminate()
-                    except:
-                        pass
-                    option_state[oid]['p'] = None
-                    if len(tmp)==4:
-                        option_state[oid]['completed'] = True
-                        option_state[oid]['output'] = tmp[0]
-                        if es_key is None: es_key = tmp[1]
-                        if es_drct is None: es_drct = tmp[2]
-                    else:
-                        print(tmp[1])
-                        if "All the received local models have parameters of nan value." in tmp[1]:
-                            option_state[oid]['completed'] = True
-                            option_state[oid]['output'] = tmp[1]
-        if all([v['completed'] for v in option_state.values()]):break
-        time.sleep(1)
-    res = []
-    for oid in range(len(options)):
-        rec_path = option_state[oid]['output']
-        if os.path.exists(rec_path):
-            with open(rec_path, 'r') as inf:
-                s_inf = inf.read()
-                rec = json.loads(s_inf)
-            res.append(rec)
-    return res, es_key, es_drct
-
-def multi_init_and_run_by_mmap(runner_args:list, devices = [], scheduler=None):
+def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=False):
     r"""
     Create multiple runners and run in parallel
 
@@ -1493,6 +1417,7 @@ def multi_init_and_run_by_mmap(runner_args:list, devices = [], scheduler=None):
         runner_args (list): each element in runner_args should be either a dict or a tuple or parameters
         devices (list): a list of gpu id
         scheduler (flgo.experiment.device_scheduler.BasicScheduler(...)): GPU scheduler
+        mmap (bool): whether to load all the dataset into the shared memory where all the processes can directly access the dataset
 
     Returns:
         a list of output results of runners
@@ -1602,16 +1527,18 @@ def multi_init_and_run_by_mmap(runner_args:list, devices = [], scheduler=None):
     runner_state = {rid: {'p': None, 'completed': False, 'output': None, 'runner_in_queue': False, 'recv': None, } for
                     rid in range(len(args))}
     if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
-    all_tasks = list(set([rarg['task'] for rarg in runner_args]))
-    keywords = ['train_holdout', 'test_holdout', 'local_test', 'local_test_ratio']
     task_meta_dict = {}
-    for task in all_tasks:
-        load_option = {}
-        for rarg in runner_args:
-            if rarg['task']==task:
-                load_option = rarg['option']
-                break
-        task_meta_dict[task] = fus.create_meta_for_task(load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords}))
+    if mmap:
+        all_tasks = list(set([rarg['task'] for rarg in runner_args]))
+        keywords = ['train_holdout', 'test_holdout', 'local_test', 'local_test_ratio']
+        task_meta_dict = {}
+        for task in all_tasks:
+            load_option = {}
+            for rarg in runner_args:
+                if rarg['task']==task:
+                    load_option = rarg['option']
+                    break
+            task_meta_dict[task] = fus.create_meta_for_task(load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords}))
     while True:
         for rid in range(len(args)):
             current_arg = args[rid]
@@ -1625,218 +1552,12 @@ def multi_init_and_run_by_mmap(runner_args:list, devices = [], scheduler=None):
                         list_current_arg[2]['gpu'] = available_device
                         recv_end, send_end = multiprocessing.Pipe(False)
                         list_current_arg.append(send_end)
-                        runner_state[rid]['p'] = multiprocessing.Process(target=_call_by_process_with_meta, args=tuple(list_current_arg))
-                        runner_state[rid]['recv'] = recv_end
-                        runner_state[rid]['p'].start()
-                        scheduler.add_process(runner_state[rid]['p'].pid)
-                        print('Process {} was created for args {}'.format(runner_state[rid]['p'].pid,current_arg))
-            else:
-                if runner_state[rid]['p'].exitcode is not None:
-                    tmp = runner_state[rid]['recv'].recv()
-                    scheduler.remove_process(tmp[-1])
-                    try:
-                        runner_state[rid]['p'].terminate()
-                    except:
-                        pass
-                    runner_state[rid]['p'] = None
-                    if len(tmp) == 4:
-                        runner_state[rid]['completed'] = True
-                        runner_state[rid]['output'] = tmp[0]
-                    else:
-                        print(tmp[1])
-                        if "All the received local models have parameters of nan value." in tmp[1]:
-                            runner_state[rid]['completed'] = True
-                            runner_state[rid]['output'] = tmp[1]
-        if all([v['completed'] for v in runner_state.values()]): break
-        time.sleep(1)
-    res = []
-    for rid in range(len(runner_state)):
-        rec_path = runner_state[rid]['output']
-        with open(rec_path, 'r') as inf:
-            s_inf = inf.read()
-            rec = json.loads(s_inf)
-        res.append(rec)
-    return res
-
-# def tune_by_mmap(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None):
-#     """
-#         Tune hyper-parameters for the specific (task, algorithm, model) in parallel.
-#         Args:
-#             task (str): the dictionary of the federated task
-#             algorithm (module|class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
-#             option (dict): the dict whose values should be of type list to construct the combinations
-#             model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
-#             Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
-#             Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
-#             scene (str): 'horizontal' or 'vertical' in current version of FLGo
-#             scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
-#         """
-#     # generate combinations of hyper-parameters
-#     if 'gpu' in option.keys():
-#         device_ids = option['gpu']
-#         option.pop('gpu')
-#         if not isinstance(device_ids, Iterable): device_ids = [device_ids]
-#     else:
-#         device_ids = [-1]
-#     keys = list(option.keys())
-#     for k in keys: option[k] = [option[k]] if (not isinstance(option[k], Iterable) or isinstance(option[k], str)) else option[k]
-#     para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
-#     options = [{k:v for k,v in zip(keys, paras)} for paras in para_combs]
-#     for op in options:op['log_file'] = True
-#     if scheduler is None:
-#         scheduler = flgo.experiment.device_scheduler.BasicScheduler(device_ids)
-#     outputs, es_key, es_drct = run_in_parallel_by_mmap(task, algorithm, options,model, devices=device_ids, Logger=Logger, Simulator=Simulator, scene=scene, scheduler=scheduler)
-#     if len(outputs)==0:
-#         warnings.warn("All the groups of parameters had resulted in divergence of model training")
-#         return {}
-#     if es_drct<=0:
-#         optimal_idx = int(np.argmin([min(output[es_key]) for output in outputs]))
-#     else:
-#         optimal_idx = int(np.argmax([max(output[es_key]) for output in outputs]))
-#     optimal_para = options[optimal_idx]
-#     print("The optimal combination of hyper-parameters is:")
-#     print('-----------------------------------------------')
-#     for k,v in optimal_para.items():
-#         if k=='gpu': continue
-#         print("{}\t|{}".format(k,v))
-#     print('-----------------------------------------------')
-#     op_round = np.argmin(outputs[optimal_idx][es_key]) if es_drct<=0 else np.argmax(outputs[optimal_idx][es_key])
-#     op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
-#     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
-#     print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
-#     return optimal_para
-
-def multi_init_and_run(runner_args:list, devices = [], scheduler=None):
-    r"""
-    Create multiple runners and run in parallel
-
-    Args:
-        runner_args (list): each element in runner_args should be either a dict or a tuple or parameters
-        devices (list): a list of gpu id
-        scheduler (flgo.experiment.device_scheduler.BasicScheduler(...)): GPU scheduler
-
-    Returns:
-        a list of output results of runners
-
-    Example:
-    ```python
-        >>> from flgo.algorithm import fedavg, fedprox, scaffold
-        >>> # create task 'mnist_iid' by flgo.gen_task if there exists no such task
-        >>> task='./mnist_iid'
-        >>> if os.path.exists(task): flgo.gen_task({'benchmark':{'name':'flgo.benchmark.mnist_classification'}, 'partitioner':{'name':'IIDPartitioner','para':{'num_clients':100}}}, task)
-        >>> algos = [fedavg, fedprox, scaffold]
-        >>> flgo.multi_init_and_run([{'task':task, 'algorithm':algo} for algo in algos], devices=[0])
-    ```
-    """
-    if len(runner_args)==0:return
-    args = []
-    if type(runner_args[0]) is dict:
-        keys = ['task', 'algorithm', 'option', 'model', 'Logger', 'Simulator', 'scene']
-        for a in runner_args:
-            tmp = collections.defaultdict(lambda:None, a)
-            if tmp['task'] is None or tmp['algorithm'] is None:
-                raise RuntimeError("keyword 'task' or 'algorithm' is of NoneType")
-            algorithm = tmp['algorithm']
-            tmp['algorithm'] = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
-            if tmp['option'] is None:
-                tmp['option'] = default_option_dict
-            else:
-                option = tmp['option']
-                default_option = read_option_from_command()
-                for op_key in option:
-                    if op_key in default_option.keys():
-                        op_type = type(default_option[op_key])
-                        if op_type == type(option[op_key]):
-                            default_option[op_key] = option[op_key]
+                        if mmap:
+                            list_current_arg = [task_meta_dict[current_arg[0]]] + list_current_arg
+                            _call_func = _call_by_process_with_meta
                         else:
-                            if op_type is list:
-                                default_option[op_key] = list(option[op_key]) if hasattr(option[op_key],
-                                                                                         '__iter__') else [
-                                    option[op_key]]
-                            elif op_type is tuple:
-                                default_option[op_key] = tuple(option[op_key]) if hasattr(option[op_key],
-                                                                                          '__iter__') else (
-                                option[op_key])
-                            else:
-                                default_option[op_key] = op_type(option[op_key])
-                tmp['option'] = default_option
-            if tmp['model'] is None:
-                model_name = None
-            else:
-                if not hasattr(tmp['model'], '__module__') and hasattr(tmp['model'], '__name__'):
-                    model_name = tmp['model'].__name__
-                else:
-                    model_name = tmp['model']
-            tmp['model'] = model_name
-            if tmp['Logger'] is None:
-                tmp['Logger'] = flgo.experiment.logger.simple_logger.SimpleLogger
-            algorithm_name = tmp['algorithm'].__name__ if (not hasattr(tmp['algorithm'], '__module__') and hasattr(tmp['algorithm'], '__name__')) else tmp['algorithm']
-            if tmp['Simulator'] is None:
-                tmp['Simulator'] = flgo.simulator.DefaultSimulator
-            if tmp['scene'] is None:
-                tmp['scene'] = 'horizontal'
-            args.append([tmp[k] for k in keys])
-    elif type(runner_args[0]) is tuple or type(runner_args[0]) is list:
-        for a in runner_args:
-            if len(a)<2: raise RuntimeError('the args of runner should at least contain task and algorithm.')
-            default_args = [None, None, default_option_dict, None, flgo.experiment.logger.simple_logger.SimpleLogger, flgo.simulator.DefaultSimulator, 'horizontal']
-            for aid in range(len(a)):
-                if aid==0:
-                    default_args[aid] = a[aid]
-                if aid==1:
-                    algorithm = a[aid]
-                    algorithm_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
-                    default_args[aid] = algorithm_name
-                elif aid==2:
-                    option = a[aid]
-                    default_option = read_option_from_command()
-                    for op_key in option:
-                        if op_key in default_option.keys():
-                            op_type = type(default_option[op_key])
-                            if op_type == type(option[op_key]):
-                                default_option[op_key] = option[op_key]
-                            else:
-                                if op_type is list:
-                                    default_option[op_key] = list(option[op_key]) if hasattr(option[op_key],
-                                                                                             '__iter__') else [
-                                        option[op_key]]
-                                elif op_type is tuple:
-                                    default_option[op_key] = tuple(option[op_key]) if hasattr(option[op_key],
-                                                                                              '__iter__') else (
-                                        option[op_key])
-                                else:
-                                    default_option[op_key] = op_type(option[op_key])
-                    default_args[aid] = default_option
-                elif aid==3:
-                    model = a[aid]
-                    if model is None:
-                        model_name = None
-                    else:
-                        if not hasattr(model, '__module__') and hasattr(model, '__name__'):
-                            model_name = model.__name__
-                        else:
-                            model_name = model
-                    default_args[aid] = model_name
-                else:
-                    default_args[aid] = a[aid]
-
-    runner_state = {rid: {'p': None, 'completed': False, 'output': None, 'runner_in_queue': False, 'recv': None, } for
-                    rid in range(len(args))}
-    if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
-    while True:
-        for rid in range(len(args)):
-            current_arg = args[rid]
-            if runner_state[rid]['p'] is None:
-                if not runner_state[rid]['completed']:
-                    available_device = scheduler.get_available_device(current_arg)
-                    if available_device is None:
-                        continue
-                    else:
-                        list_current_arg = copy.deepcopy(current_arg)
-                        list_current_arg[2]['gpu'] = available_device
-                        recv_end, send_end = multiprocessing.Pipe(False)
-                        list_current_arg.append(send_end)
-                        runner_state[rid]['p'] = multiprocessing.Process(target=_call_by_process, args=tuple(list_current_arg))
+                            _call_func = _call_by_process
+                        runner_state[rid]['p'] = multiprocessing.Process(target=_call_func, args=tuple(list_current_arg))
                         runner_state[rid]['recv'] = recv_end
                         runner_state[rid]['p'].start()
                         scheduler.add_process(runner_state[rid]['p'].pid)
