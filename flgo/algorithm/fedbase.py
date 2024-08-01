@@ -337,7 +337,7 @@ class BasicServer(BasicParty):
                 ray = None
             paratype = self.option.get('parallel_type', None)
             if paratype=='r' and ray is not None:
-                @ray.remote(num_gpus=min(len(communicate_clients), self.num_parallels)*1.0/len(self.gv.dev_list))
+                @ray.remote(num_gpus=1.0/len(self.gv.dev_list))
                 def wrap_communicate_with(server, client_id, package):
                     return server.communicate_with(client_id, package)
                 for client_id in communicate_clients:
