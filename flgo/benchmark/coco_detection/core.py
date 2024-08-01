@@ -90,7 +90,7 @@ class TaskPipe(BuiltinClassPipe):
             for k in test_pop_key: test_default_init_para.pop(k)
         train_data = self.builtin_class(**train_default_init_para)
         test_data = self.builtin_class(**test_default_init_para)
-        test_data = self.TaskDataset(test_data, list(range(len(test_data))), None, running_time_option['pin_memory'])
+        test_data = self.TaskDataset(test_data, list(range(len(test_data))), None )
         # rearrange data for server
         server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
         task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
@@ -98,7 +98,7 @@ class TaskPipe(BuiltinClassPipe):
         local_perturbation = self.feddata['local_perturbation'] if 'local_perturbation' in self.feddata.keys() else [None for _ in self.feddata['client_names']]
         for cid, cname in enumerate(self.feddata['client_names']):
             cpert = None if  local_perturbation[cid] is None else [torch.tensor(t) for t in local_perturbation[cid]]
-            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert, running_time_option['pin_memory'])
+            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], cpert )
             cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
             if running_time_option['train_holdout']>0 and running_time_option['local_test']:
                 cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])

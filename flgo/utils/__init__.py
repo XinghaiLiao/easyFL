@@ -25,7 +25,7 @@ gpu,int\list,GPU IDs and empty input means using CPU,[],
 server_with_cpu,bool,the model parameters will be stored in  the memory if True,False,
 num_parallels,int,the number of parallels during communications,1,
 num_workers,int,the number of workers of DataLoader,0,
-pin_memory,bool,1)pin_memory of DataLoader and 2) load  data directly into memory,False,
+pin_memory,bool,pin_memory of DataLoader,False,
 test_batch_size,int,the batch_size used in testing phase,512,
 availability,str,to select client availability mode,'IDL', 'IDL'|'YMF'|'MDF'|'LDF'|'YFF'|'HOMO'|'LN'|'SLN'|'YC'
 connectivity,str,to select client connectivity mode,'IDL','IDL'|'HOMO'

@@ -22,33 +22,20 @@ FromDatasetPipe = flgo.benchmark.toolkits.cv.segmentation.FromDatasetPipe
 
 class BuiltinClassPipe(ClsPipe):
     class TaskDataset(torch.utils.data.Subset):
-        def __init__(self, dataset, indices, perturbation=None, pin_memory=False):
+        def __init__(self, dataset, indices, perturbation=None ):
             super().__init__(dataset, indices)
             self.dataset = dataset
             self.indices = indices
             self.perturbation = {idx: p for idx, p in zip(indices, perturbation)} if perturbation is not None else None
-            self.pin_memory = pin_memory
-            if not self.pin_memory:
-                self.X = None
-                self.Y = None
-            else:
-                self.X = [self.dataset[i][0] for i in self.indices]
-                self.Y = [self.dataset[i][1] for i in self.indices]
 
         def __getitem__(self, idx):
-            if self.X is not None:
-                if self.perturbation is None:
-                    return self.X[idx], self.Y[idx]
-                else:
-                    return self.X[idx] + self.perturbation[self.indices[idx]], self.Y[idx]
+            if self.perturbation is None:
+                if isinstance(idx, list):
+                    return self.dataset[[self.indices[i] for i in idx]]
+                return self.dataset[self.indices[idx]]
             else:
-                if self.perturbation is None:
-                    if isinstance(idx, list):
-                        return self.dataset[[self.indices[i] for i in idx]]
-                    return self.dataset[self.indices[idx]]
-                else:
-                    return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]], \
-                           self.dataset[self.indices[idx]][1]
+                return self.dataset[self.indices[idx]][0] + self.perturbation[self.indices[idx]], \
+                       self.dataset[self.indices[idx]][1]
 
     def __init__(self, task_path, buildin_class, transform=None):
         super(BuiltinClassPipe, self).__init__(task_path, buildin_class, transform)

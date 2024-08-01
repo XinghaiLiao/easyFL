@@ -14,7 +14,7 @@ FromDatasetGenerator = flgo.benchmark.base.FromDatasetGenerator
 
 class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
     class TaskDataset(torch.utils.data.Subset):
-        def __init__(self, dataset, indices, pin_memory=False):
+        def __init__(self, dataset, indices ):
             super().__init__(dataset, indices)
             self.dataset = dataset
             self.indices = indices
@@ -47,7 +47,7 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
         task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
         # rearrange data for clients
         for cid, cname in enumerate(self.feddata['client_names']):
-            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'], running_time_option['pin_memory'])
+            cdata = self.TaskDataset(train_data, self.feddata[cname]['data'] )
             cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
             if running_time_option['train_holdout']>0 and running_time_option['local_test']:
                 cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])

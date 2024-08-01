@@ -60,7 +60,7 @@ import flgo.algorithm
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available'] # sampling options for the default sampling method in flgo.algorihtm.fedbase
 agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
-default_option_dict = {'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'r', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+default_option_dict = {'load_mode': '', 'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'r', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 if zmq is not None: _ctx = zmq.Context()
 else: _ctx = None
@@ -156,6 +156,7 @@ def read_option_from_command():
     parser.add_argument('--num_parallels', help="the number of parallels in the clients computing session", type=int, default=1)
     parser.add_argument('--parallel_type', help="the type of parallel: 't' means multi-threading, 'p' means multi-processing and 'r' means ray", type=str, default = 'r')
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
+    parser.add_argument('--load_mode', help="the mode of loading task data, e.g., ['', 'mem', 'mmap']", type=str, default='')
     parser.add_argument('--pin_memory', help='pin_memory of DataLoader', action="store_true", default=False)
     parser.add_argument('--drop_last', help='drop_last option of DataLoader, default is False', action="store_true", default=False)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
@@ -599,7 +600,7 @@ def gen_direct_task_from_file(task: str, config_file: str, target_path='.', over
     # save visualization
     return bmk_path
 
-def load_task_data(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test=False, local_test_ratio=0.5, pin_memory=False, seed=0):
+def load_task_data(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test=False, local_test_ratio=0.5, seed=0):
     r"""
     Load task datasets from a given task and some configurations.
 
@@ -609,7 +610,6 @@ def load_task_data(task, train_holdout:float=0.2, test_holdout:float=0.0, local_
         test_holdout (float): the ratio of holdout local data for the server (e.g., global validation data or public data)
         local_test (bool): whether to split the holdout training data again
         local_test_ratio (float): the ratio of twice-holdout local data (e.g., local testing data)
-        pin_memory (bool): whether to use pin memory or not
         seed (int): random seed for reproducibility
 
     Returns:
@@ -624,7 +624,7 @@ def load_task_data(task, train_holdout:float=0.2, test_holdout:float=0.0, local_
     core_module = '.'.join([benchmark, 'core'])
     task_pipe = getattr(importlib.import_module(core_module), 'TaskPipe')(task)
     setup_seed(seed)
-    option = {'train_holdout':train_holdout, 'test_holdout':test_holdout, 'local_test':local_test, 'local_test_ratio':local_test_ratio, 'pin_memory':pin_memory}
+    option = {'train_holdout':train_holdout, 'test_holdout':test_holdout, 'local_test':local_test, 'local_test_ratio':local_test_ratio}
     task_data = task_pipe.load_data(option)
     return task_data
 
@@ -672,6 +672,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         num_parallels       (int):  the number of parallels in the clients computing session, default=1
         parallel_type       (str):  the type of parallel: 't' means multi-threading and 'p' means multi-processing, default = 't'
         num_workers         (int):  the number of workers of DataLoader, default=0
+        load_mode           (str):  the loading mode of datasets
         pin_memory          (bool): pin_memory of DataLoader, default=False
         drop_last           (bool): drop_last option of DataLoader, default is False
         test_batch_size     (int):  the batch_size used in testing phase, default=512
@@ -789,7 +790,14 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     # scene-specific procedure
     ############################################### Simulation FL ###########################################
     if scene in ['horizontal', 'vertical', 'decentralized', 'hierarchical','parallel_horizontal']:
-        task_data = task_pipe.load_data(option)
+        if option['load_mode']=='mmap':
+            task_data = flgo.utils.shared_memory.load_task_data_from_npz(task)
+        else:
+            task_data = task_pipe.load_data(option)
+            if option['load_mode']=='mem':
+                for u in task_data:
+                    for v in task_data[u]:
+                        task_data[u][v] = flgo.utils.shared_memory.MemDataset(task_data[u][v]) if task_data[u][v] is not None else None
         # init objects
         obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
         tmp = []
@@ -1090,7 +1098,15 @@ def _init_with_meta(task_meta:dict, task: str, algorithm, option = {}, model=Non
     # scene-specific procedure
     ############################################### Simulation FL ###########################################
     if scene in ['horizontal', 'vertical', 'decentralized', 'hierarchical','parallel_horizontal']:
-        task_data = fus.load_taskdata_from_meta(task_meta)
+        if option['load_mode']=='mmap':
+            task_data = flgo.utils.shared_memory.load_task_data_from_npz(task)
+        else:
+            task_data = fus.load_taskdata_from_meta(task_meta)
+            # task_data = task_pipe.load_data(option)
+            # if option['load_mode']=='mem':
+            #     for u in task_data:
+            #         for v in task_data[u]:
+            #             task_data[u][v] = flgo.utils.shared_memory.MemDataset(task_data[u][v])
         # init objects
         obj_class = [c for c in dir(algorithm) if not c.startswith('__')]
         tmp = []
@@ -1307,7 +1323,9 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         load_option = options[0] if len(options)>0 else {}
         keywords = ['train_holdout', 'test_holdout', 'local_test', 'local_test_ratio']
         task_data = load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords})
-        task_meta = fus.create_meta_for_task(task_data)
+        cache_path = os.path.join(task, '.cache')
+        if not os.path.exists(cache_path): os.mkdir(cache_path)
+        task_meta = fus.create_meta_for_task(task_data, os.path.abspath(cache_path))
     while True:
         for oid in range(len(options)):
             opt = options[oid]
@@ -1535,7 +1553,9 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=Fals
                 if rarg['task']==task:
                     load_option = rarg['option']
                     break
-            task_meta_dict[task] = fus.create_meta_for_task(load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords}))
+            task_cache = os.path.join(task, '.cache')
+            if not os.path.exists(task_cache): os.mkdir(task_cache)
+            task_meta_dict[task] = fus.create_meta_for_task(load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords}), task_cache)
     while True:
         for rid in range(len(args)):
             current_arg = args[rid]
@@ -1886,3 +1906,9 @@ def _get_name():
             ip = 'unknown_ip'
         flgo._name = '_'.join([ip, socket.gethostname(), str(uuid.getnode())])
     return flgo._name
+
+def clear_task_cache(task):
+    if not os.path.exists(task): return
+    cache = os.path.join(task, '.cache')
+    if os.path.exists(cache):
+        shutil.rmtree(cache)

@@ -90,11 +90,6 @@ class TaskPipe(fbb.FromDatasetPipe):
             else:
                 cdata_test = None
             task_data[f'Client{cid}'] = {'train':cdata_train, 'val':cdata_val, 'test': cdata_test}
-        if running_time_option['pin_memory']:
-            for u in task_data:
-                for k in task_data[u]:
-                    if task_data[u][k] is not None:
-                        task_data[u][k] = self.TaskDataset(task_data[u][k])
         return task_data
 
 class TaskCalculator(fbb.BasicTaskCalculator):
