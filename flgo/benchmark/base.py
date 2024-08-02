@@ -403,7 +403,7 @@ class BasicTaskCalculator(AbstractTaskCalculator):
     def compute_loss(self, model, data, *args, **kwargs):
         return NotImplementedError
 
-    def get_optimizer(self, model=None, lr=0.1, weight_decay=0, momentum=0):
+    def get_optimizer(self, model=None, lr:float=0.1, weight_decay:float=0.0, momentum:float=0.0):
         r"""
         Create optimizer of the model parameters
 
@@ -420,8 +420,10 @@ class BasicTaskCalculator(AbstractTaskCalculator):
         filter_fn = filter(lambda p: p.requires_grad, model.parameters())
         if self.optimizer_name.lower() == 'sgd':
             return OPTIM(filter_fn, lr=lr, momentum=momentum, weight_decay=weight_decay)
-        elif self.optimizer_name.lower() in ['adam', 'rmsprop', 'adagrad']:
+        elif self.optimizer_name.lower() in ['adam', 'rmsprop', 'adagrad', 'adamw']:
             return OPTIM(filter_fn, lr=lr, weight_decay=weight_decay)
+        elif self.optimizer_name.lower() == 'adadelta':
+            return OPTIM(filter_fn, lr=lr, weight_decay=weight_decay, rho=momentum)
         else:
             raise RuntimeError("Invalid Optimizer.")
 
