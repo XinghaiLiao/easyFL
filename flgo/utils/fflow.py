@@ -1429,6 +1429,86 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
     return optimal_para
 
+def tune_sequencially(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', mmap=False):
+    """
+        Tune hyper-parameters for the specific (task, algorithm, model) in sequencial.
+        Args:
+            task (str): the dictionary of the federated task
+            algorithm (module|class): the algorithm will be used to optimize the model in federated manner, which must contain pre-defined attributions (e.g. algorithm.Server and algorithm.Client for horizontal federated learning)
+            option (dict): the dict whose values should be of type list to construct the combinations
+            model (module|class): the model module that contains two methods: model.init_local_module(object) and model.init_global_module(object)
+            Logger (class): the class of the logger inherited from flgo.experiment.logger.BasicLogger
+            Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
+            scene (str): 'horizontal' or 'vertical' in current version of FLGo
+            scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
+            mmap (bool): whether to load all the dataset into the shared memory where all the processes can directly access the dataset
+        """
+    # generate combinations of hyper-parameters
+    keys = list(option.keys())
+    for k in keys: option[k] = [option[k]] if (not isinstance(option[k], Iterable) or isinstance(option[k], str)) else option[k]
+    para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
+    options = [{k:v for k,v in zip(keys, paras)} for paras in para_combs]
+    for op in options:op['log_file'] = True
+    es_key, es_drct = None, None
+    res = []
+    load_mode = option.get('load_mode', None)
+    if mmap and load_mode not in ['mem', 'mmap']:
+        first_op = options[0]
+        keywords = ['train_holdout', 'test_holdout', 'local_test', 'local_test_ratio', 'dataseed']
+        first_op = {k: v for k, v in first_op.items() if k in keywords}
+        if first_op.get('dataseed', None) is not None:
+            first_op['seed'] = first_op['dataseed']
+            first_op.pop('dataseed')
+        task_data = load_task_data(task, **first_op)
+        cache_path = os.path.join(task, '.cache')
+        if not os.path.exists(cache_path): os.mkdir(cache_path)
+        task_meta = fus.create_memmap_meta_for_task(task_data, os.path.abspath(cache_path))
+        for op in options:
+            runner = _init_with_meta(task_meta, task, algorithm, op, model, Logger=Logger, Simulator=Simulator, scene=scene)
+            if es_key is None:
+                es_key = runner.gv.logger.get_es_key()
+                es_drct = runner.gv.logger.get_es_direction()
+            runner.run()
+            res.append(os.path.join(runner.gv.logger.get_output_path(), runner.gv.logger.get_output_name()))
+            del runner
+    else:
+        for op in options:
+            runner = flgo.init(task, algorithm, op, model, Logger=Logger, Simulator=Simulator, scene=scene)
+            if es_key is None:
+                es_key = runner.gv.logger.get_es_key()
+                es_drct = runner.gv.logger.get_es_direction()
+            runner.run()
+            res.append(os.path.join(runner.gv.logger.get_output_path(), runner.gv.logger.get_output_name()))
+            del runner
+    outputs = []
+    for oid in range(len(options)):
+        rec_path = res[oid]
+        if os.path.exists(rec_path):
+            with open(rec_path, 'r') as inf:
+                s_inf = inf.read()
+                rec = json.loads(s_inf)
+            outputs.append(rec)
+    if len(outputs)==0:
+        warnings.warn("All the groups of parameters had resulted in divergence of model training")
+        return {}
+    if es_drct<=0:
+        optimal_idx = int(np.argmin([min(output[es_key]) for output in outputs]))
+    else:
+        optimal_idx = int(np.argmax([max(output[es_key]) for output in outputs]))
+    optimal_para = options[optimal_idx]
+    print("The optimal combination of hyper-parameters is:")
+    print('-----------------------------------------------')
+    for k,v in optimal_para.items():
+        if k=='gpu': continue
+        print("{}\t|{}".format(k,v))
+    print('-----------------------------------------------')
+    op_round = np.argmin(outputs[optimal_idx][es_key]) if es_drct<=0 else np.argmax(outputs[optimal_idx][es_key])
+    op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
+    if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
+    print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
+    return optimal_para
+
+
 def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=False):
     r"""
     Create multiple runners and run in parallel
