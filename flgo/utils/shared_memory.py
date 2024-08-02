@@ -265,7 +265,7 @@ def create_task_data_npz(task, train_holdout:float=0.2, test_holdout:float=0.0, 
     else: raise FileExistsError(f'{memmap_path} already exists')
     task_data = fuf.load_task_data(task,  train_holdout, test_holdout, local_test, local_test_ratio, seed)
     task_meta = {}
-    for party in tqdm(task_data):
+    for party in tqdm(task_data, desc='Creating Task: '):
         task_meta[party] = {}
         for data_name in task_data[party]:
             data = task_data[party][data_name]
@@ -312,7 +312,7 @@ def load_task_data_from_npz(task, train_holdout:float=0.2, test_holdout:float=0.
     with open(meta_file, 'r') as f:
         task_meta = json.load(f)
     task_data = {}
-    for party in tqdm(task_meta):
+    for party in tqdm(task_meta, desc='Loading Task: '):
         task_data[party] = {}
         for data_name in task_meta[party]:
             party_data = task_meta[party][data_name]
