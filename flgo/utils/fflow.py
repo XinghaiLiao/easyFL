@@ -665,6 +665,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         train_holdout       (flt):  the rate of holding out the validation dataset from all the local training datasets',default=0.1
         test_holdout        (flt):  the rate of holding out the validation dataset from the testing datasets owned by the server', default=0.0
         local_test          (bool): if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.default=False.
+        local_test_ratio    (flt):  valid if local_test is True. The ratio of local test dataset holdout from local validation data.
         seed                (flt):  seed for random initialization;', default=0
         dataseed            (int):  seed for random initialization for data train/val/test partition', default=0
         gpu                 (list\int): GPU IDs and empty input is equal to using CPU',
@@ -791,7 +792,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     ############################################### Simulation FL ###########################################
     if scene in ['horizontal', 'vertical', 'decentralized', 'hierarchical','parallel_horizontal']:
         if option['load_mode']=='mmap':
-            task_data = flgo.utils.shared_memory.load_task_data_from_npz(task)
+            task_data = flgo.utils.shared_memory.load_task_data_from_npz(task, train_holdout=option['train_holdout'], test_holdout=option['test_holdout'], local_test=option['local_test'], local_test_ratio=option['local_test_ratio'], seed=option['dataseed'], create=True)
         else:
             task_data = task_pipe.load_data(option)
             if option['load_mode']=='mem':
@@ -1099,9 +1100,13 @@ def _init_with_meta(task_meta:dict, task: str, algorithm, option = {}, model=Non
     ############################################### Simulation FL ###########################################
     if scene in ['horizontal', 'vertical', 'decentralized', 'hierarchical','parallel_horizontal']:
         if option['load_mode']=='mmap':
-            task_data = flgo.utils.shared_memory.load_task_data_from_npz(task)
+            task_data = flgo.utils.shared_memory.load_task_data_from_npz(task, train_holdout=option['train_holdout'],
+                                                                         test_holdout=option['test_holdout'],
+                                                                         local_test=option['local_test'],
+                                                                         local_test_ratio=option['local_test_ratio'],
+                                                                         seed=option['dataseed'], create=True)
         else:
-            task_data = fus.load_taskdata_from_meta(task_meta)
+            task_data = fus.load_taskdata_from_memmap_meta(task_meta)
             # task_data = task_pipe.load_data(option)
             # if option['load_mode']=='mem':
             #     for u in task_data:
@@ -1325,7 +1330,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         task_data = load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords})
         cache_path = os.path.join(task, '.cache')
         if not os.path.exists(cache_path): os.mkdir(cache_path)
-        task_meta = fus.create_meta_for_task(task_data, os.path.abspath(cache_path))
+        task_meta = fus.create_memmap_meta_for_task(task_data, os.path.abspath(cache_path))
     while True:
         for oid in range(len(options)):
             opt = options[oid]
@@ -1555,7 +1560,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=Fals
                     break
             task_cache = os.path.join(task, '.cache')
             if not os.path.exists(task_cache): os.mkdir(task_cache)
-            task_meta_dict[task] = fus.create_meta_for_task(load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords}), task_cache)
+            task_meta_dict[task] = fus.create_memmap_meta_for_task(load_task_data(task, **{k:v for k,v in load_option.items() if k in keywords}), task_cache)
     while True:
         for rid in range(len(args)):
             current_arg = args[rid]
