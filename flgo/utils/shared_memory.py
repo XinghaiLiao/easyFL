@@ -78,7 +78,6 @@ def dataset2sharable(dataset):
 
     Returns:
         sharable_data (list[numpy.ndarray]): the numpy arrays of the dataset
-        etypes (list[str|dict]): the information of original typs of features in the dataset
     """
     first_item = dataset[0]
     item_size = len(first_item)
@@ -122,20 +121,22 @@ def dataset2sharable(dataset):
         else:
             res[j] = np.frombuffer(pickle.dumps(res[j]), dtype=np.uint8)
             etypes[j] = 'pickle'
-    return res, etypes
+    etypes = np.frombuffer(pickle.dumps(etypes), dtype=np.uint8)
+    res.append(etypes)
+    return res
 
-def sharable2dataset(sharable_data, etypes):
+def sharable2dataset(sharable_data):
     """
     Recover the original data from sharable format
 
     Args:
         sharable_data (list[numpy.ndarray]): the numpy arrays of the dataset
-        etypes (list[str|dict]): the information of original typs of features in the dataset
 
     Returns:
         dataset (torch.utils.data.Dataset): the original dataset
     """
-    types = etypes
+
+    types = pickle.loads(sharable_data.pop(-1).tobytes())
     data = []
     for i in range(len(types)):
         if isinstance(types[i], dict):
@@ -201,18 +202,17 @@ def create_memmap_meta_for_task(task_data, path=''):
         for data_name in task_data[party]:
             data = task_data[party][data_name]
             if data is None: continue
-            sharable_data, etypes = dataset2sharable(data)
+            sharable_data = dataset2sharable(data)
             shm_name = "_".join([party, data_name])
             if path!='': shm_name = os.path.join(os.path.abspath(path), shm_name)
             shm_name, dtype = create_memmap_meta_for_dataset(sharable_data, shm_name)
             task_meta[party][data_name] = {
                 "name": shm_name,
                 "dtype": dtype,
-                'etype': etypes,
             }
     return task_meta
 
-def load_dataset_from_memmap_meta(name, dtype, etype):
+def load_dataset_from_memmap_meta(name, dtype):
     """
     Load one dataset from np.memmap setting's value
 
@@ -225,7 +225,7 @@ def load_dataset_from_memmap_meta(name, dtype, etype):
     """
     memmap = np.memmap(name, mode='r', dtype=dtype)
     sharable_data = [memmap[f'{i}'][0] for i in range(len(dtype))]
-    return sharable2dataset(sharable_data, etype)
+    return sharable2dataset(sharable_data)
 
 def load_taskdata_from_memmap_meta(task_meta):
     """
@@ -270,13 +270,12 @@ def create_task_data_npz(task, train_holdout:float=0.2, test_holdout:float=0.0, 
         for data_name in task_data[party]:
             data = task_data[party][data_name]
             if data is None: continue
-            sharable_data, etypes = dataset2sharable(data)
+            sharable_data = dataset2sharable(data)
             file_name = os.path.join(os.path.abspath(memmap_path), "_".join([party, data_name])+'.npz')
             saved_data = {f'{i}': sharable_data[i] for i in range(len(sharable_data))}
             np.savez(file_name, **saved_data)
             task_meta[party][data_name] = {
                 "name": file_name,
-                'etype': etypes,
             }
     meta_file = os.path.join(memmap_path, 'meta.json')
     with open(meta_file, 'w') as f:
@@ -317,10 +316,9 @@ def load_task_data_from_npz(task, train_holdout:float=0.2, test_holdout:float=0.
         for data_name in task_meta[party]:
             party_data = task_meta[party][data_name]
             file_name = party_data['name']
-            etypes = party_data['etype']
             sharable_data = np.load(file_name, mmap_mode='r')
-            sharable_data = [sharable_data[f'{i}'] for i in range(len(etypes))]
-            dataset = sharable2dataset(sharable_data, etypes)
+            sharable_data = [sharable_data[k] for k in sharable_data.files]
+            dataset = sharable2dataset(sharable_data)
             task_data[party][data_name] = dataset
     return task_data
 
@@ -382,7 +380,8 @@ if __name__=='__main__':
     task_meta = {}
 
     tmp_data =DATA()
-    sharable_data, etypes = dataset2sharable(tmp_data)
+    sharable_data = dataset2sharable(tmp_data)
+    dataset = sharable2dataset(sharable_data)
     print('ok')
     # for party in task_data:
     #     task_meta[party] = {}
