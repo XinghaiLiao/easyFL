@@ -49,6 +49,7 @@ class Server(fedbase.BasicServer):
                 device = calculator.device
                 data_loader = tud.DataLoader(data, batch_size=config['batch_size'], shuffle=True)
                 optimizer = calculator.get_optimizer(model, lr=config['lr'], weight_decay=config['weight_decay'], momentum=config['momentum'])
+                model.train()
                 model.to(device)
                 for epoch in range(config['num_epochs']):
                     for i, batch in enumerate(data_loader):

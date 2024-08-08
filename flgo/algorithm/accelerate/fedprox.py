@@ -53,6 +53,7 @@ class Server(fedbase.BasicServer):
                 device = calculator.device
                 data_loader = tud.DataLoader(data, batch_size=config['batch_size'], shuffle=True)
                 optimizer = calculator.get_optimizer(model, lr=config['lr'], weight_decay=config['weight_decay'], momentum=config['momentum'])
+                model.train()
                 model.to(device)
                 mu = config['mu']
                 src_model = copy.deepcopy(model)
