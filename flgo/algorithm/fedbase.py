@@ -5,6 +5,7 @@ import collections
 from typing import Any, Callable
 from tqdm import tqdm
 import torch
+import torch.nn as nn
 import torch.multiprocessing as mp
 import multiprocessing.dummy as dmp
 import numpy as np
@@ -597,6 +598,10 @@ class BasicServer(BasicParty):
         if dataset is None:
             return {}
         else:
+            if self.option['test_parallel'] and torch.cuda.device_count()>1:
+                test_model = nn.DataParallel(model)
+            else:
+                test_model = model
             return self.calculator.test(model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)),
                                         num_workers=self.option['num_workers'], pin_memory=self.option['pin_memory'])
 
@@ -826,7 +831,11 @@ class BasicClient(BasicParty):
         """
         dataset = getattr(self, flag + '_data') if hasattr(self, flag + '_data') else None
         if dataset is None: return {}
-        return self.calculator.test(model, dataset, min(self.test_batch_size, len(dataset)), self.option['num_workers'])
+        if self.option['test_parallel'] and torch.cuda.device_count() > 1:
+            test_model = nn.DataParallel(model)
+        else:
+            test_model = model
+        return self.calculator.test(test_model, dataset, min(self.test_batch_size, len(dataset)), self.option['num_workers'])
 
     def unpack(self, received_pkg):
         r"""

@@ -267,7 +267,7 @@ class Selector:
             res.append(Record.create_group(groups[g]))
         return res, list(groups.keys())
 
-def load_records(task:str, algorithm: Union[str|List[str]], filter:dict={}):
+def load_records(task:str, algorithm, filter:dict={}):
     r"""
     Load the records of training.
 
@@ -304,7 +304,7 @@ def load_records(task:str, algorithm: Union[str|List[str]], filter:dict={}):
     records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}).all_records
     return records
 
-def delete_records(task:str, algorithm: Union[str|List[str]], filter:dict={}):
+def delete_records(task:str, algorithm, filter:dict={}):
     r"""
     Delete the records of training.
 
