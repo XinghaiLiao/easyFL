@@ -602,7 +602,7 @@ class BasicServer(BasicParty):
                 test_model = nn.DataParallel(model)
             else:
                 test_model = model
-            return self.calculator.test(model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)),
+            return self.calculator.test(test_model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)),
                                         num_workers=self.option['num_workers'], pin_memory=self.option['pin_memory'])
 
     def init_algo_para(self, algo_para: dict):
