@@ -18,7 +18,7 @@ class FromDatasetPipe(flgo.benchmark.base.FromDatasetPipe):
             super().__init__(dataset, indices)
             self.dataset = dataset
             self.indices = indices
-            self.pin_memory = pin_memory
+            
 
         def __getitem__(self, idx):
             return self.dataset[self.indices[idx]]

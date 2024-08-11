@@ -64,13 +64,6 @@ class BuiltinClassPipe(fbb.BasicTaskPipe):
             self.dataset = dataset
             self.indices = indices
             self.perturbation = {idx:p for idx, p in zip(indices, perturbation)} if perturbation is not None else None
-            self.pin_memory = pin_memory
-            if not self.pin_memory:
-                self.X = None
-                self.Y = None
-            else:
-                self.X = torch.stack([self.dataset[i][0] for i in self.indices])
-                self.Y = torch.stack([self.dataset[i][1] for i in self.indices])
 
         def __getitem__(self, idx):
             if self.perturbation is None:
