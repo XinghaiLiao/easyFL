@@ -213,7 +213,7 @@ class BasicServer(BasicParty):
         self.num_parallels = option['num_parallels']
         # server calculator
         self.device = self.gv.apply_for_device() if not option['server_with_cpu'] else torch.device('cpu')
-        self.calculator = self.TaskCalculator(self.device, optimizer_name=option['optimizer'])
+        self.calculator = self.TaskCalculator(self.device if not option['server_with_cpu'] else torch.device('cuda'), optimizer_name=option['optimizer'])
         # hyper-parameters during training process
         self.num_rounds = option['num_rounds']
         self.num_steps = option['num_steps']
@@ -575,11 +575,13 @@ class BasicServer(BasicParty):
             the lists of metric results of the clients)
         """
         if model is None: model=self.model
+        if self.option['server_with_cpu']: model.to('cuda')
         all_metrics = collections.defaultdict(list)
         for c in self.clients:
             client_metrics = c.test(model, flag)
             for met_name, met_val in client_metrics.items():
                 all_metrics[met_name].append(met_val)
+        model.to(self.device)
         return all_metrics
 
     def test(self, model=None, flag:str='test'):
@@ -598,12 +600,15 @@ class BasicServer(BasicParty):
         if dataset is None:
             return {}
         else:
+            if self.option['server_with_cpu']: model.to('cuda')
             if self.option['test_parallel'] and torch.cuda.device_count()>1:
                 test_model = nn.DataParallel(model)
             else:
                 test_model = model
-            return self.calculator.test(test_model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)),
+            res = self.calculator.test(test_model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)),
                                         num_workers=self.option['num_workers'], pin_memory=self.option['pin_memory'])
+            model.to(self.device)
+            return res
 
     def init_algo_para(self, algo_para: dict):
         """
