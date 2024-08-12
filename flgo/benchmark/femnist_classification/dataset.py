@@ -47,6 +47,7 @@ class FEMNIST(MNIST):
         if not os.path.exists(os.path.join(self.processed_folder, data_file)):
             self.download_and_process()
         self.data, self.targets, self.user_index = torch.load(os.path.join(self.processed_folder, data_file))
+        self.id = self.user_index.tolist()
 
     def __getitem__(self, index):
         img, target = self.data[index], int(self.targets[index])
