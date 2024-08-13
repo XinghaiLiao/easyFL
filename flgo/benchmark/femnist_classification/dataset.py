@@ -10,8 +10,10 @@ from torchvision.datasets import MNIST
 from PIL import Image
 import torch
 import torchvision
+import torchvision.datasets.utils as tdu
+from tqdm import tqdm
 
-transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), ])
+transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0.1307,), (0.3081,))])
 root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'RAW_DATA', 'MNIST')
 
 def download_from_url(url= None, filepath = '.'):
@@ -63,47 +65,50 @@ class FEMNIST(MNIST):
         Download the raw data and process it and save it in Torch format
         Modified from https://github.com/alibaba/FederatedScope/blob/master/federatedscope/cv/dataset/leaf_cv.py
         """
-        if not os.path.exists(os.path.join(self.raw_folder, 'all_data.json')):
+        if not os.path.exists(os.path.join(self.raw_folder, 'all_data')):
             """Download the FEMNIST data if it doesn't exist in processed_folder already."""
-
             os.makedirs(self.raw_folder, exist_ok=True)
             os.makedirs(self.processed_folder, exist_ok=True)
-
             # Download to `self.raw_dir`.
             url = 'https://federatedscope.oss-cn-beijing.aliyuncs.com'
             name = 'femnist_all_data.zip'
-            src_path = download_from_url(f'{url}/{name}', os.path.join(self.raw_folder, 'tmp'))
-            tar_paths = extract_from_zip(src_path, self.raw_folder)
-            all_data = {
-                'users': [],
-                'num_samples': [],
-                'user_data': {}
-            }
-            for i in range(1, len(tar_paths)):
-                with open(tar_paths[i], 'r') as f:
-                    raw_data = json.load(f)
-                    all_data['users'].extend(raw_data['users'])
-                    all_data['num_samples'].extend(raw_data['num_samples'])
-                    all_data['user_data'].update(raw_data['user_data'])
-            with open(os.path.join(self.raw_folder, 'all_data.json'), 'w') as f:
-                json.dump(all_data, f)
-            os.remove(src_path)
-            shutil.rmtree(tar_paths[0])
-        else:
-            with open(os.path.join(self.raw_folder, 'all_data.json'), 'r') as f:
-                all_data = json.load(f)
+            tdu.download_and_extract_archive(f'{url}/{name}', self.raw_folder, remove_finished=True)
+            # src_path = download_from_url(f'{url}/{name}', os.path.join(, 'femnist_all_data.zip'))
+            # tar_paths = extract_from_zip(src_path, self.raw_folder)
+
+            # with open(os.path.join(self.raw_folder, 'all_data.json'), 'w') as f:
+            #     json.dump(all_data, f)
+            # os.remove(src_path)
+            # shutil.rmtree(tar_paths[0])
+        # else:
+        #     if not os.path.exists(os.path.join(self.raw_folder, 'all_data')):
+        #         tar_paths = extract_from_zip(os.path.join(self.raw_folder, 'femnist_all_data.zip'), self.raw_folder)
+        #     else:
+        tar_path0 = os.path.join(self.raw_folder, 'all_data')
+        tar_paths = [tar_path0] + [os.path.join(tar_path0, r) for r in os.listdir(tar_path0)]
+            # with open(os.path.join(self.raw_folder, 'all_data.json'), 'r') as f:
+            #     all_data = json.load(f)
+        all_data = {
+            'users': [],
+            'num_samples': [],
+            'user_data': {}
+        }
+        for i in tqdm(range(1, len(tar_paths)), desc='Loading data'):
+            with open(tar_paths[i], 'r') as f:
+                raw_data = json.load(f)
+                all_data['users'].extend(raw_data['users'])
+                all_data['num_samples'].extend(raw_data['num_samples'])
+                all_data['user_data'].update(raw_data['user_data'])
         """Process Data"""
         Xs = []
         Ys = []
         sample_ids = []
-        idx = 0
-        for writer, v in all_data['user_data'].items():
+        for idx, (writer, v) in enumerate(all_data['user_data'].items()):
             data, targets = v['x'], v['y']
             Xs.extend(data)
             Ys.extend(targets)
             sample_ids.extend([idx] * len(data))
-            idx += 1
-        Xs = torch.tensor(np.stack(Xs))
+        Xs = torch.tensor(np.stack(Xs))/255.0
         Ys = torch.LongTensor(np.stack(Ys))
         sample_ids = torch.tensor(np.stack(sample_ids))
         num_samples = sample_ids.shape[0]
