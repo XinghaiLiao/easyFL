@@ -114,6 +114,7 @@ class FEMNIST(MNIST):
         num_samples = sample_ids.shape[0]
         s1 = int(num_samples * 0.9)
         s2 = num_samples - s1
+        torch.manual_seed(0)
         train_ids, test_ids = torch.utils.data.random_split(sample_ids, [s1, s2])
         train_indices = train_ids.indices
         test_indices = test_ids.indices
