@@ -13,7 +13,7 @@ import torchvision
 import torchvision.datasets.utils as tdu
 from tqdm import tqdm
 
-transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0.1307,), (0.3081,))])
+transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0.9637,), (0.1591,))])
 root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'RAW_DATA', 'MNIST')
 
 def download_from_url(url= None, filepath = '.'):
