@@ -602,11 +602,13 @@ class BasicServer(BasicParty):
         else:
             if self.option['server_with_cpu']: model.to('cuda')
             if self.option['test_parallel'] and torch.cuda.device_count()>1:
-                test_model = nn.DataParallel(model)
+                test_model = nn.DataParallel(model.to('cuda'))
+                self.calculator.device = torch.device('cuda')
             else:
                 test_model = model
             res = self.calculator.test(test_model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)),
                                         num_workers=self.option['num_workers'], pin_memory=self.option['pin_memory'])
+            self.calculator.device = self.device
             model.to(self.device)
             return res
 
@@ -837,10 +839,15 @@ class BasicClient(BasicParty):
         dataset = getattr(self, flag + '_data') if hasattr(self, flag + '_data') else None
         if dataset is None: return {}
         if self.option['test_parallel'] and torch.cuda.device_count() > 1:
-            test_model = nn.DataParallel(model)
+            test_model = nn.DataParallel(model.to('cuda'))
+            self.calculator.device = torch.device('cuda')
         else:
             test_model = model
-        return self.calculator.test(test_model, dataset, min(self.test_batch_size, len(dataset)), self.option['num_workers'])
+        res = self.calculator.test(test_model, dataset, min(self.test_batch_size, len(dataset)), self.option['num_workers'])
+        model.to(self.device)
+        self.calculator.device = self.device
+        return res
+
 
     def unpack(self, received_pkg):
         r"""
