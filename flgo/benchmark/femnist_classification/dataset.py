@@ -65,10 +65,10 @@ class FEMNIST(MNIST):
         Download the raw data and process it and save it in Torch format
         Modified from https://github.com/alibaba/FederatedScope/blob/master/federatedscope/cv/dataset/leaf_cv.py
         """
+        os.makedirs(self.raw_folder, exist_ok=True)
+        os.makedirs(self.processed_folder, exist_ok=True)
         if not os.path.exists(os.path.join(self.raw_folder, 'all_data')):
             """Download the FEMNIST data if it doesn't exist in processed_folder already."""
-            os.makedirs(self.raw_folder, exist_ok=True)
-            os.makedirs(self.processed_folder, exist_ok=True)
             # Download to `self.raw_dir`.
             url = 'https://federatedscope.oss-cn-beijing.aliyuncs.com'
             name = 'femnist_all_data.zip'
