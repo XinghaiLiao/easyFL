@@ -19,7 +19,7 @@ import torchvision
 class Model(fuf.FModule):
     def __init__(self):
         super().__init__()
-        self.model = resnet18()
+        self.model = resnet34()
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
@@ -114,7 +114,7 @@ class BottleNeck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, num_block, num_classes=100):
+    def __init__(self, block, num_block, num_classes=10):
         super().__init__()
 
         self.in_channels = 64

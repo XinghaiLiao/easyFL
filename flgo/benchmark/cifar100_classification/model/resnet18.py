@@ -7,8 +7,43 @@
     Deep Residual Learning for Image Recognition
     https://arxiv.org/abs/1512.03385v1
 """
+
+import torch
 import torch.nn as nn
-from flgo.utils.fmodule import FModule
+import flgo.utils.fmodule as fuf
+from torch.utils.data import Dataset
+import torchvision.transforms as transforms
+import torchvision
+class Model(fuf.FModule):
+    def __init__(self):
+        super().__init__()
+        self.model = resnet18()
+
+    def forward(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
+
+class AugmentDataset(Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.transform = torchvision.transforms.Compose([transforms.RandomCrop(size=(32, 32), padding=4), transforms.RandomHorizontalFlip(0.5)])
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, item):
+        img, label = self.dataset[item]
+        return self.transform(img), label
+
+def init_dataset(object):
+    if 'Client' in object.get_classname():
+        object.train_data = AugmentDataset(object.train_data)
+
+def init_local_module(object):
+    pass
+
+def init_global_module(object):
+    if 'Server' in object.__class__.__name__:
+        object.model = Model().to(object.device)
 
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
@@ -76,10 +111,13 @@ class BottleNeck(nn.Module):
     def forward(self, x):
         return nn.ReLU(inplace=True)(self.residual_function(x) + self.shortcut(x))
 
-class Model(FModule):
-    def __init__(self, block=BasicBlock, num_block=[2,2,2,2], num_classes=100):
+class ResNet(nn.Module):
+
+    def __init__(self, block, num_block, num_classes=100):
         super().__init__()
+
         self.in_channels = 64
+
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(64),
@@ -91,7 +129,7 @@ class Model(FModule):
         self.conv4_x = self._make_layer(block, 256, num_block[2], 2)
         self.conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.head = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
@@ -118,7 +156,7 @@ class Model(FModule):
 
         return nn.Sequential(*layers)
 
-    def encoder(self, x):
+    def forward(self, x):
         output = self.conv1(x)
         output = self.conv2_x(output)
         output = self.conv3_x(output)
@@ -126,16 +164,33 @@ class Model(FModule):
         output = self.conv5_x(output)
         output = self.avg_pool(output)
         output = output.view(output.size(0), -1)
+        output = self.fc(output)
+
         return output
 
-    def forward(self, x):
-        output = self.encoder(x)
-        output = self.head(output)
-        return output
+def resnet18():
+    """ return a ResNet 18 object
+    """
+    return ResNet(BasicBlock, [2, 2, 2, 2])
 
-def init_local_module(object):
-    pass
+def resnet34():
+    """ return a ResNet 34 object
+    """
+    return ResNet(BasicBlock, [3, 4, 6, 3])
 
-def init_global_module(object):
-    if 'Server' in object.__class__.__name__:
-        object.model = Model().to(object.device)
+def resnet50():
+    """ return a ResNet 50 object
+    """
+    return ResNet(BottleNeck, [3, 4, 6, 3])
+
+def resnet101():
+    """ return a ResNet 101 object
+    """
+    return ResNet(BottleNeck, [3, 4, 23, 3])
+
+def resnet152():
+    """ return a ResNet 152 object
+    """
+    return ResNet(BottleNeck, [3, 8, 36, 3])
+
+

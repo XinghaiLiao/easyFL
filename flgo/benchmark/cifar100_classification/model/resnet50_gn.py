@@ -19,7 +19,7 @@ import torchvision
 class Model(fuf.FModule):
     def __init__(self):
         super().__init__()
-        self.model = resnet18()
+        self.model = resnet50()
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)

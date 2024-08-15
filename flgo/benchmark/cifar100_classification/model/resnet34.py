@@ -10,8 +10,6 @@
 
 import torch
 import torch.nn as nn
-import torch
-import torch.nn as nn
 import flgo.utils.fmodule as fuf
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
@@ -19,7 +17,7 @@ import torchvision
 class Model(fuf.FModule):
     def __init__(self):
         super().__init__()
-        self.model = resnet18()
+        self.model = resnet34()
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
@@ -46,6 +44,7 @@ def init_local_module(object):
 def init_global_module(object):
     if 'Server' in object.__class__.__name__:
         object.model = Model().to(object.device)
+
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
 
@@ -63,10 +62,10 @@ class BasicBlock(nn.Module):
         #residual function
         self.residual_function = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-            nn.GroupNorm(2, out_channels),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels * BasicBlock.expansion, kernel_size=3, padding=1, bias=False),
-            nn.GroupNorm(2,out_channels * BasicBlock.expansion)
+            nn.BatchNorm2d(out_channels * BasicBlock.expansion)
         )
 
         #shortcut
@@ -77,7 +76,7 @@ class BasicBlock(nn.Module):
         if stride != 1 or in_channels != BasicBlock.expansion * out_channels:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_channels, out_channels * BasicBlock.expansion, kernel_size=1, stride=stride, bias=False),
-                nn.GroupNorm(2,out_channels * BasicBlock.expansion)
+                nn.BatchNorm2d(out_channels * BasicBlock.expansion)
             )
 
     def forward(self, x):
@@ -92,13 +91,13 @@ class BottleNeck(nn.Module):
         super().__init__()
         self.residual_function = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
-            nn.GroupNorm(2, out_channels),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, stride=stride, kernel_size=3, padding=1, bias=False),
-            nn.GroupNorm(2, out_channels),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels * BottleNeck.expansion, kernel_size=1, bias=False),
-            nn.GroupNorm(2,out_channels * BottleNeck.expansion),
+            nn.BatchNorm2d(out_channels * BottleNeck.expansion),
         )
 
         self.shortcut = nn.Sequential()
@@ -106,7 +105,7 @@ class BottleNeck(nn.Module):
         if stride != 1 or in_channels != out_channels * BottleNeck.expansion:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_channels, out_channels * BottleNeck.expansion, stride=stride, kernel_size=1, bias=False),
-                nn.GroupNorm(2,out_channels * BottleNeck.expansion)
+                nn.BatchNorm2d(out_channels * BottleNeck.expansion)
             )
 
     def forward(self, x):
@@ -121,7 +120,7 @@ class ResNet(nn.Module):
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
-            nn.GroupNorm(2,64),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True))
         #we use a different inputsize than the original paper
         #so conv2_x's stride is 1
