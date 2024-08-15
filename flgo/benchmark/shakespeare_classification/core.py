@@ -93,6 +93,7 @@ class SHAKESPEARE(Dataset):
         num_user = len(users)
         s1 = int(num_user * 0.9)
         s2 = num_user - s1
+        torch.manual_seed(0)
         train_users, test_users = torch.utils.data.random_split(users, [s1, s2])
         train_sample_ids = []
         trainXs = []
