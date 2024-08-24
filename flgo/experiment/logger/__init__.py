@@ -2412,7 +2412,7 @@ class BasicLogger(Logger):
 
     def organize_output(self, *args, **kwargs):
         """This method will be called before saving self.output"""
-        for key in self.output.keys():
-            if '_dist' in key:
-                self.output[key] = self.output[key][-1]
+        # for key in self.output.keys():
+        #     if '_dist' in key:
+        #         self.output[key] = self.output[key][-1]
         return
