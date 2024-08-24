@@ -749,7 +749,7 @@ class Table:
     def __repr__(self):
         return self.tb.__repr__()
 
-    def get_column(self, idx: str|int):
+    def get_column(self, idx: Union[int, str]):
         if isinstance(idx, int):
             col_values = [r[idx] for r in self.tb.rows]
         elif isinstance(idx, str):
