@@ -51,7 +51,7 @@ class BasicScheduler(AbstractScheduler):
         self.devices=[-1] if devices==[] else devices
         self.dev_index = self.dev_index%len(self.devices)
 
-    def add_process(self, pid=None):
+    def add_process(self, pid=None, *args, **kwargs):
         r"""
         Record the running process that uses the gpu from the scheduler
 

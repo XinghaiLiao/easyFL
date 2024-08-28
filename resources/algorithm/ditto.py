@@ -9,7 +9,7 @@ from flgo.utils import fmodule
 class Server(BasicServer):
     def initialize(self, *args, **kwargs):
         self.init_algo_para({'mu':1.0})
-        self.sample_option = 'md'
+        self.sample_option = 'md' if self.proportion < 1.0 else 'full'
         self.aggregation_option = 'uniform'
 
 class Client(BasicClient):

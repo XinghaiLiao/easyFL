@@ -13,6 +13,8 @@ import os.path
 import types
 import uuid
 import warnings
+
+import prettytable
 import requests
 import re
 import zipfile
@@ -1441,7 +1443,7 @@ def run_in_sequencial(task: str, algorithm, options:list = [], model=None, Logge
     return outputs, es_key, es_drct
 
 
-def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None, mmap=False):
+def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None, mmap=False, target_path='.'):
     """
         Tune hyper-parameters for the specific (task, algorithm, model) in parallel.
         Args:
@@ -1454,7 +1456,18 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
             scene (str): 'horizontal' or 'vertical' in current version of FLGo
             scheduler (instance of flgo.experiment.device_scheduler.BasicScheduler): GPU scheduler that schedules GPU by checking their availability
             mmap (bool): whether to load all the dataset into the shared memory where all the processes can directly access the dataset
+            target_path (str): the target path to save the optimal configuration, default is '.'
         """
+    task_name = os.path.split(task)[-1]
+    algo_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else str(algorithm)
+    model_name = 'default' if model is None else (model.__name__ if not hasattr(model, '__module__') and hasattr(model, '__name__') else str(model))
+    logger_name = Logger.__name__
+    simulator_name = Simulator.__name__
+    target_name = "-".join([task_name, algo_name, model_name, simulator_name, logger_name, scene]) + '.yml'
+    target_file = os.path.join(target_path, target_name)
+    if not os.path.exists(target_path): os.makedirs(target_path)
+    if os.path.exists(target_file):
+        warnings.warn(f"There already exist the optimal configuration for {algo_name} using {model_name} model on task <{task_name}> at {target_path} which will be soon overwrite ")
     # generate combinations of hyper-parameters
     if 'gpu' in option.keys():
         device_ids = option['gpu']
@@ -1488,9 +1501,11 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
     print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
+    with open(target_file, "w") as f:
+        yaml.dump(optimal_para, f, default_flow_style=False)
     return optimal_para
 
-def tune_sequencially(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', mmap=False):
+def tune_sequencially(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', mmap=False, target_path='.'):
     """
         Tune hyper-parameters for the specific (task, algorithm, model) in sequencial.
         Args:
@@ -1502,7 +1517,18 @@ def tune_sequencially(task: str, algorithm, option: dict = {}, model=None, Logge
             Simulator (class): the class of the simulator inherited from flgo.simulator.BasicSimulator
             scene (str): 'horizontal' or 'vertical' in current version of FLGo
             mmap (bool): whether to load all the dataset into the shared memory where all the processes can directly access the dataset
+            target_path (str): the target path to save the optimal configuration, default is '.'
         """
+    task_name = os.path.split(task)[-1]
+    algo_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else str(algorithm)
+    model_name = 'default' if model is None else (model.__name__ if not hasattr(model, '__module__') and hasattr(model, '__name__') else str(model))
+    logger_name = Logger.__name__
+    simulator_name = Simulator.__name__
+    target_name = "-".join([task_name, algo_name, model_name, simulator_name, logger_name, scene]) + '.yml'
+    target_file = os.path.join(target_path, target_name)
+    if not os.path.exists(target_path): os.makedirs(target_path)
+    if os.path.exists(target_file):
+        warnings.warn(f"There already exist the optimal configuration for {algo_name} using {model_name} model on task <{task_name}>  at {target_path} which will be soon overwrited ")
     # generate combinations of hyper-parameters
     keys = list(option.keys())
     for k in keys: option[k] = [option[k]] if (not isinstance(option[k], Iterable) or isinstance(option[k], str)) else option[k]
@@ -1566,8 +1592,158 @@ def tune_sequencially(task: str, algorithm, option: dict = {}, model=None, Logge
     op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
     print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
+    with open(target_file, "w") as f:
+        yaml.dump(optimal_para, f, default_flow_style=False)
     return optimal_para
 
+def multi_tune(tune_args: Union[list, dict], scheduler=None, target_path='.'):
+    try:
+        # init multiprocess
+        torch.multiprocessing.set_start_method('spawn', force=True)
+        torch.multiprocessing.set_sharing_strategy('file_system')
+    except:
+        pass
+    if len(tune_args)==0:return
+    if isinstance(tune_args, dict): tune_args = [tune_args]
+    if scheduler is None: scheduler = flgo.experiment.device_scheduler.AutoScheduler(list(range(torch.cuda.device_count())))
+    # Construct parameter space for each (task, algorithm)
+    all_configuration_to_run = []
+    all_configuration_output = []
+    es_keys = {}
+    es_drcts = {}
+    target_files = {}
+    if not os.path.exists(target_path): os.makedirs(target_path)
+    for task_dict in tune_args:
+        task = task_dict['task']
+        algos = task_dict['algorithm']
+        options = task_dict['option']
+        scene = task_dict.get('scene', 'horizontal')
+        # Check tune_args
+        if not isinstance(algos, list): algos = [algos]
+        if not isinstance(options, list): options = [options]
+        loggers = task_dict.get('Logger', flgo.experiment.logger.tune_logger.TuneLogger)
+        if not isinstance(loggers, list): loggers = [loggers for _ in range(len(algos))]
+        simulators = task_dict.get('Simulator', flgo.simulator.DefaultSimulator)
+        if not isinstance(simulators, list): simulators = [simulators for _ in range(len(algos))]
+        models = task_dict.get('model', None)
+        if not isinstance(models, list): models = [models for _ in range(len(algos))]
+        assert len(models)==len(algos)
+        assert len(simulators)==len(algos)
+        assert len(loggers)==len(algos)
+        assert len(options)==len(algos)
+        for aoption, algo, alogger, asimulator, amodel in zip(options, algos, loggers, simulators, models):
+            algorithm_name = algo.__name__ if (not hasattr(algo, '__module__') and hasattr(algo, '__name__')) else algo
+            model_name = 'default' if amodel is None else (amodel.__name__ if not hasattr(amodel, '__module__') and hasattr(amodel, '__name__') else str(amodel))
+            atarget_name = "-".join([os.path.split(task)[-1], algorithm_name, model_name, asimulator.__name__, alogger.__name__, scene]) + '.yml'
+            atarget_file = os.path.join(target_path, atarget_name)
+            es_keys[atarget_name] = None
+            es_drcts[atarget_name] = None
+            if os.path.exists(atarget_file):
+                warnings.warn(f"There already exist the optimal configuration for {algorithm_name} using {model_name} model on task <{os.path.split(task)[-1]}> at {target_path} which will be soon overwrited ")
+            target_files[atarget_name] = atarget_file
+            keys = list(aoption.keys())
+            for k in keys: aoption[k] = [aoption[k]] if (not isinstance(aoption[k], Iterable) or isinstance(aoption[k], str)) else aoption[k]
+            para_combs = [para_comb for para_comb in itertools.product(*(aoption[k] for k in keys))]
+            algo_ops = [{k: v for k, v in zip(keys, paras)} for paras in para_combs]
+            if amodel is None: model_name = None
+            else: model_name = amodel.__name__ if not hasattr(amodel, '__module__') and hasattr(amodel, '__name__') else amodel
+            for aop_i in algo_ops:
+                aop_i['log_file'] = True
+                all_configuration_to_run.append([task, algorithm_name, aop_i, model_name, alogger, asimulator, scene])
+                all_configuration_output.append(atarget_name)
+    config_state = {config_id:{'p':None, 'completed':False, 'output':None, 'option_in_queue':False, 'recv':None, } for config_id in range(len(all_configuration_to_run))}
+    while True:
+        for config_id in range(len(all_configuration_to_run)):
+            config = all_configuration_to_run[config_id]
+            if config_state[config_id]['p'] is None:
+                if not config_state[config_id]['completed']:
+                    opt = config[2]
+                    available_device = scheduler.get_available_device(config[2])
+                    if available_device is None: continue
+                    else:
+                        config[2]['gpu'] = available_device
+                        recv_end, send_end = multiprocessing.Pipe(False)
+                        config_state[config_id]['p'] = multiprocessing.Process(target=_call_by_process, args=tuple(config + [send_end]))
+                        config_state[config_id]['recv'] = recv_end
+                        config_state[config_id]['p'].start()
+                        scheduler.add_process(config_state[config_id]['p'].pid)
+                        print('Process {} was created for args {}'.format(config_state[config_id]['p'].pid,config))
+            else:
+                if config_state[config_id]['p'].exitcode is not None:
+                    tmp = config_state[config_id]['recv'].recv()
+                    scheduler.remove_process(tmp[-1])
+                    try:
+                        config_state[config_id]['p'].terminate()
+                    except:
+                        pass
+                    config_state[config_id]['p'] = None
+                    if len(tmp)==4:
+                        config_state[config_id]['completed'] = True
+                        config_state[config_id]['output'] = tmp[0]
+                        if es_keys[all_configuration_output[config_id]] is None: es_keys[all_configuration_output[config_id]] = tmp[1]
+                        if es_drcts[all_configuration_output[config_id]] is None: es_drcts[all_configuration_output[config_id]] = tmp[2]
+                    else:
+                        print(tmp[1])
+                        if "All the received local models have parameters of nan value." in tmp[1]:
+                            config_state[config_id]['completed'] = True
+                            config_state[config_id]['output'] = tmp[1]
+        if all([v['completed'] for v in config_state.values()]):break
+        time.sleep(1)
+    # Organize outputs
+    outputs = collections.defaultdict(list)
+    for config_id in range(len(all_configuration_to_run)):
+        coutput_key = all_configuration_output[config_id]
+        outputs[coutput_key].append((config_id, config_state[config_id]['output']))
+
+    optimal_paras = {}
+    for output_name in outputs:
+        output_files = outputs[output_name]
+        output_datas = []
+        config_ids = []
+        for (config_id, outf) in output_files:
+            if os.path.exists(outf):
+                with open(outf, 'r') as inf:
+                    s_inf = inf.read()
+                    rec = json.loads(s_inf)
+                output_datas.append(rec)
+                config_ids.append(config_id)
+        if len(output_datas) == 0:
+            warnings.warn("All the groups of parameters had resulted in divergence of model training")
+            continue
+        es_key = es_keys[output_name]
+        es_drct = es_drcts[output_name]
+        if es_drct <= 0:
+            optimal_idx = int(np.argmin([min(x[es_key]) for x in output_datas]))
+            optimal_round = np.argmin(output_datas[optimal_idx][es_key])
+            optimal_metric = output_datas[optimal_idx][es_key][int(optimal_round)]
+        else:
+            optimal_idx = int(np.argmax([max(x[es_key]) for x in output_datas]))
+            optimal_round = np.argmax(output_datas[optimal_idx][es_key])
+            optimal_metric = output_datas[optimal_idx][es_key][int(optimal_round)]
+        optimal_para = all_configuration_to_run[config_ids[optimal_idx]][2]
+        target_file = target_files[output_name]
+        with open(target_file, "w") as f:
+            yaml.dump(optimal_para, f, default_flow_style=False)
+        optimal_para['optimal_round'] = optimal_round
+        optimal_para['optimal_metric'] = optimal_metric
+        # if 'gpu' in optimal_para.keys(): optimal_para.pop('gpu')
+        optimal_paras[output_name[:-4]] = optimal_para
+
+    all_keys = []
+    for v in list(optimal_paras.values()):
+        all_keys.extend(list(v.keys()))
+    all_keys = ['name']+list(set(all_keys))
+    all_keys.remove('optimal_round')
+    all_keys.remove('optimal_metric')
+    all_keys.append('optimal_round')
+    all_keys.append('optimal_metric')
+    tb = prettytable.PrettyTable(field_names=all_keys)
+    tb.title = 'Optimal Configuration'
+    for name, para in optimal_paras.items():
+        row = [name] + [para.get(k, 'default') for k in all_keys if k !='name']
+        tb.add_row(row)
+    print(tb)
+    return
 
 def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=False):
     r"""

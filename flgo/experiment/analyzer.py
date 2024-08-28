@@ -60,6 +60,7 @@ import matplotlib as mpl
 import prettytable as pt
 import json
 from flgo.utils.fflow import load_configuration
+import re
 
 def option2filter(option: dict):
     val_keys = {
@@ -220,20 +221,32 @@ class Selector:
 
     def filename_filter(self, fnames, filter):
         if len(filter)==0: return fnames
+        key_order = ['M', 'R', 'B', 'E', 'LR', 'P', 'S', 'SCH', 'LD', 'WD', 'SIM', 'AVL', 'CN', 'CP', 'RS', 'LG']
+        pattern = r'(.*?)_M(.*?)_R(\d*)_B(-?\d+(?:\.\d+)?)_E(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_LR(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_P(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_S(-?\d+)_LD(\w*_)?(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_WD(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_SIM(.*?)(_AVL(.*?)_CN(.*?)_CP(.*?)_RS(.*?))?_LG(.*?).json'
+        file_values = [re.findall(pattern, f)[0] for f in fnames]
         for key in filter.keys():
             condition = filter[key]
             res = []
-            for f in fnames:
-                if f.find('_'+key)==-1: continue
-                fv = f[f.find('_' + key) + len(key) + 1:f.find('_', f.find('_' + key) + 1)]
+            for fid, f in enumerate(fnames):
+                key_idx = f.find('_'+key)
+                if key_idx==-1: continue
+                key_pos = key_order.index(key)
+                fv = file_values[fid][key_pos+1]
                 if type(condition) is list:
-                    fv = float(fv) if ('0' <= fv[0] <= '9' or fv[0] == '.' or fv[0] == '-') else fv
+                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD']:
+                        fv = float(fv)
                     if fv in condition: res.append(f)
                 elif type(condition) is str:
-                    con = (fv+condition) if condition[0] in ['<', '>', '='] else (fv+'=='+condition)
-                    if eval(con): res.append(f)
+                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD']:
+                        con = (fv+condition) if condition[0] in ['<', '>', '='] else (fv+'=='+condition)
+                        if eval(con): res.append(f)
+                    else:
+                        if fv==condition: res.append(f)
                 else:
-                    if float(fv)==float(condition): res.append(f)
+                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD']:
+                        if float(fv)==float(condition): res.append(f)
+                    else:
+                        if str(fv)==str(condition): res.append(f)
             fnames = res
         return fnames
 

@@ -2287,15 +2287,11 @@ class BasicLogger(Logger):
                         self.option['learning_rate'],
                         self.option['proportion'],
                         self.option['seed'],
-                        self.option['lr_scheduler'] + "{:.4e}".format(self.option['learning_rate_decay']),
+                        self.option['lr_scheduler'] + "_{:.4e}".format(self.option['learning_rate_decay']),
                         self.option['weight_decay'],
         )
-        output_name = output_name + '_SIM{}_AVL{}_CN{}_CP{}_RS{}_LG{}'.format(
+        output_name = output_name + '_SIM{}_LG{}'.format(
                         self.option['simulator'],
-                        self.option['availability'],
-                        self.option['connectivity'],
-                        self.option['completeness'],
-                        self.option['responsiveness'],
                         self.__class__.__name__,
         )
         output_name = output_name + suffix
