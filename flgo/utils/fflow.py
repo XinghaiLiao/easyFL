@@ -1726,11 +1726,13 @@ def multi_tune(tune_args: Union[list, dict], scheduler=None, target_path='.'):
         if 'early_stop' in optimal_para.keys(): optimal_para.pop('early_stop')
         with open(target_file, "w") as f:
             yaml.dump(optimal_para, f, default_flow_style=False)
+        for k in optimal_para.keys():
+            if k in ['log_file', 'no_log_console', 'gpu', 'load_mode', 'local_test', 'train_holdout', 'test_holdout','server_with_cpu']:
+                optimal_para.pop(k)
         optimal_para['optimal_round'] = optimal_round
         optimal_para['optimal_metric'] = optimal_metric
         # if 'gpu' in optimal_para.keys(): optimal_para.pop('gpu')
         optimal_paras[output_name[:-4]] = optimal_para
-
     all_keys = []
     for v in list(optimal_paras.values()):
         all_keys.extend(list(v.keys()))
