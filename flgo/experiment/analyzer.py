@@ -222,7 +222,7 @@ class Selector:
     def filename_filter(self, fnames, filter):
         if len(filter)==0: return fnames
         key_order = ['M', 'R', 'B', 'E', 'LR', 'P', 'S', 'SCH', 'LD', 'WD', 'SIM', 'AVL', 'CN', 'CP', 'RS', 'LG']
-        pattern = r'(.*?)_M(.*?)_R(\d*)_B(-?\d+(?:\.\d+)?)_E(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_LR(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_P(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_S(-?\d+)_LD(\w*_)?(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_WD(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_SIM(.*?)(_AVL(.*?)_CN(.*?)_CP(.*?)_RS(.*?))?_LG(.*?).json'
+        pattern = r'(.*?)_M(.*?)_R(\d*)_B(-?\d+(?:\.\d+)?)_E(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_LR(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_P(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_S(-?\d+)_LD([-\.\w]*_)?(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_WD(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_SIM(.*?)(_AVL(.*?)_CN(.*?)_CP(.*?)_RS(.*?))?_LG(.*?).json'
         file_values = {f:re.findall(pattern, f)[0] for f in fnames}
         for key in filter.keys():
             condition = filter[key]
