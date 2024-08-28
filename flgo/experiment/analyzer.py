@@ -223,7 +223,7 @@ class Selector:
         if len(filter)==0: return fnames
         key_order = ['M', 'R', 'B', 'E', 'LR', 'P', 'S', 'SCH', 'LD', 'WD', 'SIM', 'AVL', 'CN', 'CP', 'RS', 'LG']
         pattern = r'(.*?)_M(.*?)_R(\d*)_B(-?\d+(?:\.\d+)?)_E(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_LR(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_P(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_S(-?\d+)_LD(\w*_)?(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_WD(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_SIM(.*?)(_AVL(.*?)_CN(.*?)_CP(.*?)_RS(.*?))?_LG(.*?).json'
-        file_values = [re.findall(pattern, f)[0] for f in fnames]
+        file_values = {f:re.findall(pattern, f)[0] for f in fnames}
         for key in filter.keys():
             condition = filter[key]
             res = []
@@ -231,7 +231,7 @@ class Selector:
                 key_idx = f.find('_'+key)
                 if key_idx==-1: continue
                 key_pos = key_order.index(key)
-                fv = file_values[fid][key_pos+1]
+                fv = file_values[f][key_pos+1]
                 if type(condition) is list:
                     if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD']:
                         fv = float(fv)
