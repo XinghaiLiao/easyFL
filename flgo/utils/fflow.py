@@ -1442,7 +1442,6 @@ def run_in_sequencial(task: str, algorithm, options:list = [], model=None, Logge
             outputs.append(rec)
     return outputs, es_key, es_drct
 
-
 def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.experiment.logger.BasicLogger = flgo.experiment.logger.tune_logger.TuneLogger, Simulator: BasicSimulator=flgo.simulator.DefaultSimulator, scene='horizontal', scheduler=None, mmap=False, target_path='.'):
     """
         Tune hyper-parameters for the specific (task, algorithm, model) in parallel.
@@ -1501,6 +1500,7 @@ def tune(task: str, algorithm, option: dict = {}, model=None, Logger: flgo.exper
     op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
     print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
+    if 'early_stop' in optimal_para.keys(): optimal_para.pop('early_stop')
     with open(target_file, "w") as f:
         yaml.dump(optimal_para, f, default_flow_style=False)
     return optimal_para
@@ -1592,6 +1592,7 @@ def tune_sequencially(task: str, algorithm, option: dict = {}, model=None, Logge
     op_value = np.min(outputs[optimal_idx][es_key]) if es_drct<=0 else np.max(outputs[optimal_idx][es_key])
     if 'eval_interval' in option.keys(): op_round = option['eval_interval']*op_round
     print('The optimal value {} of {} occurs at the round {}'.format(op_value, es_key, op_round))
+    if 'early_stop' in optimal_para.keys(): optimal_para.pop('early_stop')
     with open(target_file, "w") as f:
         yaml.dump(optimal_para, f, default_flow_style=False)
     return optimal_para
@@ -1722,6 +1723,7 @@ def multi_tune(tune_args: Union[list, dict], scheduler=None, target_path='.'):
             optimal_metric = output_datas[optimal_idx][es_key][int(optimal_round)]
         optimal_para = all_configuration_to_run[config_ids[optimal_idx]][2]
         target_file = target_files[output_name]
+        if 'early_stop' in optimal_para.keys(): optimal_para.pop('early_stop')
         with open(target_file, "w") as f:
             yaml.dump(optimal_para, f, default_flow_style=False)
         optimal_para['optimal_round'] = optimal_round
