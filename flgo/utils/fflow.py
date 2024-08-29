@@ -1530,11 +1530,14 @@ def tune_sequencially(task: str, algorithm, option: dict = {}, model=None, Logge
     if os.path.exists(target_file):
         warnings.warn(f"There already exist the optimal configuration for {algo_name} using {model_name} model on task <{task_name}>  at {target_path} which will be soon overwrited ")
     # generate combinations of hyper-parameters
+    device_ids = option.pop('gpu') if 'gpu' in option.keys() else None
     keys = list(option.keys())
     for k in keys: option[k] = [option[k]] if (not isinstance(option[k], Iterable) or isinstance(option[k], str)) else option[k]
     para_combs = [para_comb for para_comb in itertools.product(*(option[k] for k in keys))]
     options = [{k:v for k,v in zip(keys, paras)} for paras in para_combs]
-    for op in options:op['log_file'] = True
+    for op in options:
+        op['log_file'] = True
+        if device_ids is not None: op['gpu'] = device_ids
     es_key, es_drct = None, None
     res = []
     load_mode = option.get('load_mode', None)
