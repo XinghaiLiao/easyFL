@@ -17,7 +17,8 @@ def visualize_by_class(generator, partitioner, task_path:str):
     all_labels = [d[-1] for d in generator.train_data]
     num_classes = len(set(all_labels))
     ax = plt.subplots()
-    colors = [key for key in matplotlib.colors._colors_full_map.keys()]
+    colors = [key for key in matplotlib.colors.CSS4_COLORS.keys()]
+    if len(colors)<num_classes: colors = list(matplotlib.colors._colors_full_map.keys())
     random.shuffle(colors)
     client_height = 1
     if hasattr(generator.partitioner, 'num_parties'):
