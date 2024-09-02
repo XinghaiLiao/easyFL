@@ -27,6 +27,7 @@ num_parallels,int,the number of parallels during communications,1,
 num_workers,int,the number of workers of DataLoader,0,
 pin_memory,bool,pin_memory of DataLoader,False,
 test_batch_size,int,the batch_size used in testing phase,512,
+test_parallel, bool, whether to use torch.nn.DataParallel to evaluate models
 availability,str,to select client availability mode,'IDL', 'IDL'|'YMF'|'MDF'|'LDF'|'YFF'|'HOMO'|'LN'|'SLN'|'YC'
 connectivity,str,to select client connectivity mode,'IDL','IDL'|'HOMO'
 completeness,str,to select client completeness mode,'IDL','IDL'|'PDU'|'FSU'|'ADU'|'ASU'
@@ -36,4 +37,5 @@ log_file,bool,whether log to file and default  value is False,False,
 no_log_console,bool,whether log to screen and default  value is True,True,
 no_overwrite,bool,whether to overwrite the old result,False,
 eval_interval,int,evaluate every __ rounds;,1,
+save_optimal, bool, whether the logger will save the optimal state (e.g., validation-optimal global model) after training ends, False,
 """

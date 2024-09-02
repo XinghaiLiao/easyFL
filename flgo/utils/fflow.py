@@ -62,7 +62,7 @@ import flgo.algorithm
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available'] # sampling options for the default sampling method in flgo.algorihtm.fedbase
 agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
-default_option_dict = {'test_parallel':False, 'load_mode': '', 'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'r', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+default_option_dict = {'save_optimal':False, 'test_parallel':False, 'load_mode': '', 'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'r', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 if zmq is not None: _ctx = zmq.Context()
 else: _ctx = None
@@ -178,8 +178,9 @@ def read_option_from_command():
     parser.add_argument('--no_log_console', help='bool controls whether log to screen and default value is True', action="store_true", default=False)
     parser.add_argument('--no_overwrite', help='bool controls whether to overwrite the old result', action="store_true", default=False)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
-    parser.add_argument('--save_checkpoint', help='the level of logger', type=str, default='')
-    parser.add_argument('--load_checkpoint', help='the level of logger', type=str, default='')
+    parser.add_argument('--save_checkpoint', help='save checkpoint into the disk', type=str, default='')
+    parser.add_argument('--load_checkpoint', help='load from checkpoint', type=str, default='')
+    parser.add_argument('--save_optimal', help='bool controls whether the logger will save the optimal state (e.g., validation-optimal global model) after training ends and default value is False', action="store_true", default=False)
 
     try: option = vars(parser.parse_known_args()[0])
     except IOError as msg: parser.error(str(msg))

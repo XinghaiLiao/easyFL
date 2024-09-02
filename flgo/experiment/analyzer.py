@@ -51,6 +51,7 @@ import warnings
 from typing import *
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 import yaml
 import uuid
 import os
@@ -80,7 +81,24 @@ def option2filter(option: dict):
         'responsiveness': 'RS',
     }
 
-class Record:
+class TorchRecord:
+    r"""
+        Read the record that is stored by each logger into the memory according
+        to the task and the name.
+
+        Args:
+            task (str): the path of the task
+            name (str): the name of the saved record
+        """
+
+    def __init__(self, task, name):
+        self.task = task
+        self.name = name
+        self.rec_path = os.path.join(task, 'record', name)
+        self.data = torch.load(self.rec_path)
+        self.datas = [self.data]
+
+class JsonRecord:
     r"""
     Read the record that is stored by each runner into the memory according
     to the task and the name.
@@ -191,8 +209,9 @@ class Selector:
         >>> # of the records that pass the filter
     ```
     """
-    def __init__(self, selector_config):
+    def __init__(self, selector_config, suffix='.json'):
         self.config = selector_config
+        self.suffix = suffix
         self.tasks = [selector_config['task']] if type(selector_config['task']) is not list else selector_config['task']
         self.headers = selector_config['header'] if type(selector_config['header']) is list else [selector_config['header']]
         self.filter = selector_config['filter'] if 'filter' in selector_config.keys() else {}
@@ -204,7 +223,7 @@ class Selector:
         for ti in tmp: self.all_records.extend(ti)
         try:
             self.grouped_records, self.group_names, = self.group_records()
-        except Exception() as e:
+        except Exception as e:
             print(e)
 
     def scan(self):
@@ -215,35 +234,38 @@ class Selector:
             tmp = []
             # check headers
             for header in self.headers:
-                tmp.extend([f for f in all_records if f.startswith(header) and f.endswith('.json')])
-            res[task] = self.filename_filter(tmp, self.filter)
+                tmp.extend([f for f in all_records if f.startswith(header) and f.endswith(self.suffix)])
+            res[task] = self.filename_filter(tmp, self.filter, suffix=self.suffix)
         return res
 
-    def filename_filter(self, fnames, filter):
+    def filename_filter(self, fnames, filter, suffix='.json'):
         if len(filter)==0: return fnames
         key_order = ['M', 'R', 'B', 'E', 'LR', 'P', 'S', 'SCH', 'LD', 'WD', 'SIM', 'AVL', 'CN', 'CP', 'RS', 'LG']
-        pattern = r'(.*?)_M(.*?)_R(\d*)_B(-?\d+(?:\.\d+)?)_E(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_LR(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_P(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_S(-?\d+)_LD([-\.\w]*_)?(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_WD(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_SIM(.*?)(_AVL(.*?)_CN(.*?)_CP(.*?)_RS(.*?))?_LG(.*?).json'
-        file_values = {f:re.findall(pattern, f)[0] for f in fnames}
+        pattern = r'(.*?)_M(.*?)_R(\d*)_B(-?\d+(?:\.\d+)?)_E(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_LR(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_P(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_S(-?\d+)_LD([-\.\w]*_)?(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_WD(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_SIM(.*?)(_AVL(.*?)_CN(.*?)_CP(.*?)_RS(.*?))?_LG(.*?)'+suffix
+        pattern2 = r'(.*?)_M(.*?)_R(\d*)_B(-?\d+(?:\.\d+)?)_K(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_LR(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_P(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_S(-?\d+)_LD([-\.\w]*_)?(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_WD(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)_SIM(.*?)(_AVL(.*?)_CN(.*?)_CP(.*?)_RS(.*?))?_LG(.*?)'+suffix
+        vals = [re.findall(pattern, f) for f in fnames]
+        vals2 = [re.findall(pattern2, f) for f in fnames]
+        file_values = {f:v[0] if len(v)>0 else v2[0] for f,v, v2 in zip(fnames, vals, vals2)}
         for key in filter.keys():
             condition = filter[key]
             res = []
             for fid, f in enumerate(fnames):
                 key_idx = f.find('_'+key)
                 if key_idx==-1: continue
-                key_pos = key_order.index(key)
+                key_pos = key_order.index(key) if key!='K' else key_order.index('E')
                 fv = file_values[f][key_pos+1]
                 if type(condition) is list:
-                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD']:
+                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD', 'K']:
                         fv = float(fv)
                     if fv in condition: res.append(f)
                 elif type(condition) is str:
-                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD']:
+                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD', 'K']:
                         con = (fv+condition) if condition[0] in ['<', '>', '='] else (fv+'=='+condition)
                         if eval(con): res.append(f)
                     else:
                         if fv==condition: res.append(f)
                 else:
-                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD']:
+                    if key in ['R', 'B', 'E', 'LR', 'P', 'S', 'LD', 'WD', 'K']:
                         if float(fv)==float(condition): res.append(f)
                     else:
                         if str(fv)==str(condition): res.append(f)
@@ -263,12 +285,19 @@ class Selector:
             files = os.listdir(path)
             for record_name in rec_names[task]:
                 if record_name in files:
-                    record = Record(task, record_name)
-                    record.set_legend(self.legend_with)
-                    res[task].append(record)
+                    if self.suffix=='.json':
+                        record = JsonRecord(task, record_name)
+                        record.set_legend(self.legend_with)
+                        res[task].append(record)
+                    elif self.suffix=='.pth':
+                        record = TorchRecord(task, record_name)
+                        res[task].append(record)
+                    else:
+                        raise NotImplementedError("Unsupported file type. Only '.json' and '.pth' are currently supported by class <Selector>.")
         return res
 
     def group_records(self, key=['seed'], group_with_gpu=False):
+        if self.suffix!='.json': return None, None
         if type(key) is not list: key=[key]
         if not group_with_gpu: key.append('gpu')
         groups = collections.defaultdict(list)
@@ -277,10 +306,10 @@ class Selector:
             groups[group_name].append(rec)
         res = []
         for g in groups:
-            res.append(Record.create_group(groups[g]))
+            res.append(JsonRecord.create_group(groups[g]))
         return res, list(groups.keys())
 
-def load_records(task:str, algorithm, filter:dict={}):
+def load_records(task:str, algorithm, filter:dict={}, suffix='.json'):
     r"""
     Load the records of training.
 
@@ -288,12 +317,14 @@ def load_records(task:str, algorithm, filter:dict={}):
         task (str): the path of the task
         algorithm (list(str)|str): the algorithm name of the list of algorihtms' names
         filter (dict): filter records of undesirable settings, e.g., learning_rate, batch_size
+        suffix (str): the suffix of record to be scan
     Returns:
         the list of selected records
     """
     new_filter = {}
     key_map = {
         'num_epochs':'E',
+        'num_steps': 'K',
         'learning_rate': 'LR',
         'batch_size': 'B',
         'lr': 'LR',
@@ -314,10 +345,10 @@ def load_records(task:str, algorithm, filter:dict={}):
         else:
             warnings.warn(f"Condition '{k}' is invalid")
     if isinstance(algorithm, str): algorithm = [algorithm]
-    records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}).all_records
+    records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}, suffix=suffix).all_records
     return records
 
-def delete_records(task:str, algorithm, filter:dict={}):
+def delete_records(task:str, algorithm, filter:dict={}, suffix='.json'):
     r"""
     Delete the records of training.
 
@@ -350,7 +381,7 @@ def delete_records(task:str, algorithm, filter:dict={}):
         else:
             warnings.warn(f"Condition '{k}' is invalid")
     if isinstance(algorithm, str): algorithm = [algorithm]
-    records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}).all_records
+    records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}, suffix=suffix).all_records
     if len(records)==0:
         print("Records not found.")
         return 0
@@ -367,7 +398,7 @@ class PaintObject:
     And the method self.draw should be overwritten if necessary.
 
     Args:
-        rec (Record): the record
+        rec (JsonRecord): the record
         args (dict): the painting arguments
         obj_option (dict): the personal option for each object
         draw_func (str): optional, the function name. All the subclass of this class won't claim this parameter.
@@ -389,7 +420,7 @@ class PaintObject:
         ...         ax.legend()
     ```
     """
-    def __init__(self, rec: Record, args: dict,  obj_option: dict, draw_func: str):
+    def __init__(self, rec: JsonRecord, args: dict, obj_option: dict, draw_func: str):
         self.rec = rec
         self.args = args
         self.obj_option = obj_option
@@ -548,7 +579,7 @@ def min_value(record,  col_option={}):
         {'x': key of record.data}
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:
@@ -562,7 +593,7 @@ def max_value(record,  col_option={}):
         {'x': key of record.data}
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:
@@ -576,7 +607,7 @@ def variance(record, col_option={}):
         {'x': key of record.data}
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:
@@ -590,7 +621,7 @@ def std_value(record, col_option={}):
         {'x': key of record.data}
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:
@@ -604,7 +635,7 @@ def mean_value(record, col_option={}):
         {'x': key of record.data}
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:
@@ -618,7 +649,7 @@ def final_value(record, col_option={}):
         {'x': key of record.data}
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:
@@ -637,7 +668,7 @@ def optimal_x_by_y(record, col_option={}):
         }
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:
@@ -658,7 +689,7 @@ def group_optimal_value(record, col_option={}):
         }
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:
@@ -683,7 +714,7 @@ def group_optimal_x_by_y(record, col_option={}):
         }
 
     Args:
-        record (Record): the record
+        record (JsonRecord): the record
         col_option (dict): column option
 
     Returns:

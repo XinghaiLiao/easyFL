@@ -258,6 +258,7 @@ class BasicServer(BasicParty):
                     self.gv.logger.log_once()
                     self.gv.logger.time_end('Eval Time Cost')
                     self._save_checkpoint()
+                    if self.option.get('save_optimal', False): self.gv.logger.trace_optimal_state()
                 # check if early stopping
                 if self.gv.logger.early_stop(): break
                 self.current_round += 1
@@ -748,19 +749,22 @@ class BasicServer(BasicParty):
     def _load_checkpoint(self):
         checkpoint = self.option.get('load_checkpoint', '')
         if checkpoint!='':
-            try:
+            if os.path.isdir(checkpoint):
                 cpt_name = self.gv.logger.get_output_name('')
                 cpt_path = os.path.join(self.option['task'], 'checkpoint', checkpoint)
                 cpts = os.listdir(cpt_path)
                 cpts = [p for p in cpts if cpt_name in p]
                 cpt_round = max([int(p.split('.')[-1]) for p in cpts])
                 cpt_path = os.path.join(cpt_path, '.'.join([cpt_name, str(cpt_round)]))
+            else:
+                cpt_path = checkpoint
+            try:
                 self.gv.logger.info(f'Loading checkpoint {cpt_name} at round {cpt_round}...')
                 cpt = torch.load(cpt_path)
                 self.load_checkpoint(cpt)
                 return True
             except Exception as e:
-                self.gv.logger.info(f"Failed to load checkpoint due to {e}")
+                self.gv.logger.info(f"Failed to load checkpoint {cpt_path} due to {e}")
         return False
 
 class BasicClient(BasicParty):

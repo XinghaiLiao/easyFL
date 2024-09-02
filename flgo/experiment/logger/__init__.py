@@ -2170,6 +2170,7 @@ class BasicLogger(Logger):
         self._es_counter = 0
         self._es_best_score = None
         self._es_best_round = 0
+        self._optimal_state = None
 
     def check_if_log(self, round, eval_interval=-1):
         """For evaluating every 'eval_interval' rounds, check whether to log at 'round'."""
@@ -2224,6 +2225,7 @@ class BasicLogger(Logger):
         except Exception as e:
             self.warning(e)
             self.error('Failed to save logger.output as results due to Error {}'.format(e))
+        if self._optimal_state is not None: self.save_optimal_state()
 
     def check_is_jsonable(self, x):
         try:
@@ -2369,6 +2371,24 @@ class BasicLogger(Logger):
             self._es_best_round = self.coordinator.current_round-1
             self._es_counter = 0
         return False
+
+    def optimal_state(self)->dict:
+        return {
+            'model': self.coordinator.model.state_dict()
+        }
+
+    def trace_optimal_state(self):
+        if self._es_key not in self.output: return False
+        score = self._es_direction*self.output[self._es_key][-1]
+        if np.isnan(score): return False
+        if self._optimal_state is None or score>self._optimal_state[self._es_key]:
+            self._optimal_state = self.optimal_state()
+            self._optimal_state['round'] = self.coordinator.current_round-1,
+            self._optimal_state[self._es_key] = score
+        return True
+
+    def save_optimal_state(self):
+        if self._optimal_state is not None: torch.save(self._optimal_state, os.path.join(self.get_output_path(), self.get_output_name(suffix='.pth')))
 
     def initialize(self, *args, **kwargs):
         return
