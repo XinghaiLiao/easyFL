@@ -749,14 +749,16 @@ class BasicServer(BasicParty):
     def _load_checkpoint(self):
         checkpoint = self.option.get('load_checkpoint', '')
         if checkpoint!='':
-            if os.path.isdir(checkpoint):
+            cpt_path = os.path.join(self.option['task'], 'checkpoint', checkpoint)
+            if os.path.exists(cpt_path) and os.path.isdir(cpt_path):
                 cpt_name = self.gv.logger.get_output_name('')
-                cpt_path = os.path.join(self.option['task'], 'checkpoint', checkpoint)
                 cpts = os.listdir(cpt_path)
                 cpts = [p for p in cpts if cpt_name in p]
                 cpt_round = max([int(p.split('.')[-1]) for p in cpts])
                 cpt_path = os.path.join(cpt_path, '.'.join([cpt_name, str(cpt_round)]))
             else:
+                cpt_name = os.path.split(cpt_path)[-1]
+                cpt_round = cpt_name.split('.')[-1]
                 cpt_path = checkpoint
             try:
                 self.gv.logger.info(f'Loading checkpoint {cpt_name} at round {cpt_round}...')
