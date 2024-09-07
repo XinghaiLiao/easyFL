@@ -727,6 +727,7 @@ class BasicServer(BasicParty):
             'output': self.gv.logger.output,
             'time': self.gv.clock.current_time,
         }
+        if self.option.get('save_optimal', False): cpt.update({'optimal_state': self.gv.logger._optimal_state})
         return cpt
 
     def load_checkpoint(self, cpt):
@@ -745,6 +746,7 @@ class BasicServer(BasicParty):
             self.gv.logger._es_best_score = early_stop_option['_es_best_score']
             self.gv.logger._es_best_round = early_stop_option['_es_best_round']
             self.gv.logger._es_patience = early_stop_option['_es_patience']
+        if self.option.get('save_optimal', False): self.gv.logger._optimal_state = cpt.get('optimal_state', None)
 
 
     def _load_checkpoint(self):
