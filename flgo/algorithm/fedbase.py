@@ -325,8 +325,9 @@ class BasicServer(BasicParty):
             received_package_buffer[client_id] = None
         # communicate with selected clients
         if self.num_parallels <= 1:
+            clients_for_iterate = communicate_clients if self.option.get('no_tqdm', False) else tqdm(communicate_clients, desc="Local Training on {} Clients".format(len(communicate_clients)), leave=False)
             # computing iteratively
-            for client_id in tqdm(communicate_clients, desc="Local Training on {} Clients".format(len(communicate_clients)), leave=False):
+            for client_id in clients_for_iterate:
                 server_pkg = self.pack(client_id, mtype)
                 server_pkg['__mtype__'] = mtype
                 response_from_client_id = self.communicate_with(self.clients[client_id].id, package=server_pkg)

@@ -176,6 +176,7 @@ def read_option_from_command():
     parser.add_argument('--log_level', help='the level of logger', type=str, default='INFO')
     parser.add_argument('--log_file', help='bool controls whether log to file and default value is False', action="store_true", default=False)
     parser.add_argument('--no_log_console', help='bool controls whether log to screen and default value is True', action="store_true", default=False)
+    parser.add_argument('--no_tqdm', help='bool controls whether to use tqdm when communicating with clients', action="store_true", default=False)
     parser.add_argument('--no_overwrite', help='bool controls whether to overwrite the old result', action="store_true", default=False)
     parser.add_argument('--eval_interval', help='evaluate every __ rounds;', type=int, default=1)
     parser.add_argument('--check_interval', help='save checkpoints every __ rounds;', type=int, default=1)
@@ -1324,7 +1325,7 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
         else:
             model_name = model
     algorithm_name = algorithm.__name__ if (not hasattr(algorithm, '__module__') and hasattr(algorithm, '__name__')) else algorithm
-    option_state = {oid:{'p':None, 'completed':False, 'output':None, 'option_in_queue':False, 'recv':None, } for oid in range(len(options))}
+    option_state = {oid:{'p':None, 'completed':False, 'output':None, 'option_in_queue':False, 'recv':None, 'pid':None} for oid in range(len(options))}
     if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
     es_key = None
     es_drct = None
@@ -1352,12 +1353,18 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                             option_state[oid]['p'] = multiprocessing.Process(target=_call_by_process, args=(task, algorithm_name, opt, model_name, Logger, Simulator, scene, send_end))
                         option_state[oid]['recv'] = recv_end
                         option_state[oid]['p'].start()
+                        option_state[oid]['pid'] = option_state[oid]['p'].pid
                         scheduler.add_process(option_state[oid]['p'].pid)
                         print('Process {} was created for args {}'.format(option_state[oid]['p'].pid,(task, algorithm_name, opt, model_name, Logger, Simulator, scene)))
             else:
                 if option_state[oid]['p'].exitcode is not None:
-                    tmp = option_state[oid]['recv'].recv()
-                    scheduler.remove_process(tmp[-1])
+                    try:
+                        tmp = option_state[oid]['recv'].recv()
+                        scheduler.remove_process(tmp[-1])
+                    except:
+                        tmp = (opt, 'unknown error',option_state[oid]['pid'], )
+                        scheduler.remove_process(option_state[oid]['pid'])
+                        pass
                     try:
                         option_state[oid]['p'].terminate()
                     except:
@@ -1657,7 +1664,7 @@ def multi_tune(tune_args: Union[list, dict], scheduler=None, target_path='.'):
                 aop_i['log_file'] = True
                 all_configuration_to_run.append([task, algorithm_name, aop_i, model_name, alogger, asimulator, scene])
                 all_configuration_output.append(atarget_name)
-    config_state = {config_id:{'p':None, 'completed':False, 'output':None, 'option_in_queue':False, 'recv':None, } for config_id in range(len(all_configuration_to_run))}
+    config_state = {config_id:{'p':None, 'completed':False, 'output':None, 'option_in_queue':False, 'recv':None, 'pid':None} for config_id in range(len(all_configuration_to_run))}
     while True:
         for config_id in range(len(all_configuration_to_run)):
             config = all_configuration_to_run[config_id]
@@ -1672,12 +1679,17 @@ def multi_tune(tune_args: Union[list, dict], scheduler=None, target_path='.'):
                         config_state[config_id]['p'] = multiprocessing.Process(target=_call_by_process, args=tuple(config + [send_end]))
                         config_state[config_id]['recv'] = recv_end
                         config_state[config_id]['p'].start()
+                        config_state[config_id]['pid'] = config_state[config_id]['p'].pid
                         scheduler.add_process(config_state[config_id]['p'].pid)
                         print('Process {} was created for args {}'.format(config_state[config_id]['p'].pid,config))
             else:
                 if config_state[config_id]['p'].exitcode is not None:
-                    tmp = config_state[config_id]['recv'].recv()
-                    scheduler.remove_process(tmp[-1])
+                    try:
+                        tmp = config_state[config_id]['recv'].recv()
+                        scheduler.remove_process(tmp[-1])
+                    except:
+                        tmp = (config, 'unknown error', config_state[config_id]['pid'],)
+                        scheduler.remove_process(config_state[config_id]['pid'])
                     try:
                         config_state[config_id]['p'].terminate()
                     except:
@@ -1869,7 +1881,7 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=Fals
                 else:
                     default_args[aid] = a[aid]
 
-    runner_state = {rid: {'p': None, 'completed': False, 'output': None, 'runner_in_queue': False, 'recv': None, } for
+    runner_state = {rid: {'p': None, 'completed': False, 'output': None, 'runner_in_queue': False, 'recv': None, 'pid':None} for
                     rid in range(len(args))}
     if scheduler is None: scheduler = flgo.experiment.device_scheduler.BasicScheduler(devices)
     task_meta_dict = {}
@@ -1907,12 +1919,17 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=Fals
                         runner_state[rid]['p'] = multiprocessing.Process(target=_call_func, args=tuple(list_current_arg))
                         runner_state[rid]['recv'] = recv_end
                         runner_state[rid]['p'].start()
+                        runner_state[rid]['pid'] = runner_state[rid]['p'].pid
                         scheduler.add_process(runner_state[rid]['p'].pid)
                         print('Process {} was created for args {}'.format(runner_state[rid]['p'].pid,current_arg))
             else:
                 if runner_state[rid]['p'].exitcode is not None:
-                    tmp = runner_state[rid]['recv'].recv()
-                    scheduler.remove_process(tmp[-1])
+                    try:
+                        tmp = runner_state[rid]['recv'].recv()
+                        scheduler.remove_process(tmp[-1])
+                    except:
+                        tmp = (current_arg, 'unknown error', runner_state[rid]['pid'])
+                        scheduler.remove_process(tmp[-1])
                     try:
                         runner_state[rid]['p'].terminate()
                     except:
