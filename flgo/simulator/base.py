@@ -384,6 +384,17 @@ class BasicSimulator(AbstractSimulator):
         """API to update client capacity every time unit"""
         return
 
+    def save_checkpoint(self):
+        return {
+            'variables': self.variables,
+            'client_states': self.client_states,
+            'state_counter': self.state_counter,
+        }
+
+    def load_checkpoint(self, cpt):
+        for k, v in cpt.items():
+            setattr(self, k, v)
+
     def flush(self):
         """Flush the client state machine as time goes by"""
         # +++++++++++++++++++ availability +++++++++++++++++++++

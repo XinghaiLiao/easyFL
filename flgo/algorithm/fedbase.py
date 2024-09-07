@@ -728,6 +728,10 @@ class BasicServer(BasicParty):
             'time': self.gv.clock.current_time,
         }
         if self.option.get('save_optimal', False): cpt.update({'optimal_state': self.gv.logger._optimal_state})
+        if hasattr(self.gv, 'simulator') and self.gv.simulator is not None:
+            cpt.update({
+                "simulator": self.gv.simulator.save_checkpoint()
+            })
         return cpt
 
     def load_checkpoint(self, cpt):
@@ -747,7 +751,8 @@ class BasicServer(BasicParty):
             self.gv.logger._es_best_round = early_stop_option['_es_best_round']
             self.gv.logger._es_patience = early_stop_option['_es_patience']
         if self.option.get('save_optimal', False): self.gv.logger._optimal_state = cpt.get('optimal_state', None)
-
+        if hasattr(self.gv, 'simulator') and self.gv.simulator is not None:
+            self.gv.simulator.load_checkpoint(cpt.get('simulator', {}))
 
     def _load_checkpoint(self):
         checkpoint = self.option.get('load_checkpoint', '')
