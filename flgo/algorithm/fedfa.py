@@ -41,6 +41,18 @@ class Server(BasicServer):
     def aggregate(self, models, p):
         return fmodule._model_average(models, p)
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'fs': [ci.frequency for ci in self.clients],
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        fs = cpt.get('fs', [0 for _ in self.clients])
+        for client_i, fi in zip(self.clients, fs):
+            client_i.frequency = fi
 
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):

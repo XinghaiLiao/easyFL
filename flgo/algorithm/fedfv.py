@@ -71,6 +71,19 @@ class Server(BasicServer):
         self.model = self.model-gt
         return
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'client_last_sample_round': self.client_last_sample_round,
+            'client_grads_history': self.client_grads_history,
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        self.client_last_sample_round = cpt['client_last_sample_round']
+        self.client_grads_history = cpt['client_grads_history']
+
 class Client(BasicClient):
     def reply(self, svr_pkg):
         model = self.unpack(svr_pkg)

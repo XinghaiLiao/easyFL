@@ -25,6 +25,20 @@ class Server(BasicServer):
         self.init_algo_para({'mu': 0.1, 'tau':0.5})
         self.output_layer = ".".join([f'[{m}]' if m.isdigit() else f'{m}' for m in list(self.model.state_dict().keys())[-1].split('.')[:-1]])
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'local_models': [ci.local_model.state_dict() if ci.local_model is not None else None for ci in self.clients],
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        local_models = cpt.get('local_models', [None for _ in self.clients])
+        for client_i, local_model_i in zip(self.clients, local_models):
+            if local_model_i is not None:
+                client_i.local_model = self.model.zeros_like()
+                client_i.local_model.load_state_dict(local_model_i)
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):
         self.local_model = None

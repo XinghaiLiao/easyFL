@@ -74,3 +74,16 @@ class AsyncServer(BasicServer):
         is_model_updated = self.package_handler(received_packages)
         if is_model_updated: self.buffered_clients = set()
         return is_model_updated
+
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'concurrent_clients': self.concurrent_clients,
+            'buffered_clients': self.buffered_clients
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        self.concurrent_clients = cpt.get('concurrent_clients', set())
+        self.buffered_clients = cpt.get('buffered_clients', set())

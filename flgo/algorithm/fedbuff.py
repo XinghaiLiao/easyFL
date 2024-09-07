@@ -27,6 +27,17 @@ class Server(AsyncServer):
             return True
         return False
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'buffer': self.buffer,
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        self.buffer = cpt.get('buffer', set())
+
 class Client(BasicClient):
     def reply(self, svr_pkg):
         model = self.unpack(svr_pkg)

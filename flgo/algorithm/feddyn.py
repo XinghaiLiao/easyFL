@@ -30,6 +30,24 @@ class Server(BasicServer):
         new_model = fmodule._model_average(models) - 1.0 / self.alpha * self.h
         return new_model
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'h': self.h.state_dict(),
+            'gradLs': [ci.gradL.state_dict() if ci.gradL is not None else None for ci in self.clients],
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        h = cpt.get('h', None)
+        gradLs = cpt.get('gradLs', [None for _ in self.clients])
+        if h is not None: self.h.load_state_dict(h)
+        for client_i, gradL_i in zip(self.clients, gradLs):
+            if gradL_i is not None:
+                client_i.gradL = self.h.zeros_like()
+                client_i.gradL.load_state_dict(gradL_i)
+
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):
         self.gradL = None

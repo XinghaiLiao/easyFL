@@ -12,6 +12,21 @@ class Server(BasicServer):
         self.sample_option = 'md' if self.proportion < 1.0 else 'full'
         self.aggregation_option = 'uniform'
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'cmodels': [ci.model.state_dict() if ci.model is not None else None for ci in self.clients],
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        cmodels = cpt.get('cmodels', [None for _ in self.clients])
+        for client_i, cmodel_i in zip(self.clients, cmodels):
+            if cmodel_i is not None:
+                client_i.model = self.model.zeros_like()
+                client_i.c.load_state_dict(cmodel_i)
+
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):
         self.model = None

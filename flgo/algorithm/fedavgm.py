@@ -19,3 +19,15 @@ class Server(BasicServer):
         self.v = self.beta*self.v + (self.model - new_model)
         self.model = self.model - self.v
         return
+
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'v': self.v.state_dict(),
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        v = cpt.get('v', None)
+        if v is not None: self.v.load_state_dict(v)

@@ -71,6 +71,20 @@ class Server(BasicServer):
         else:
             return self.calculator.test(model, self.test_data, batch_size=self.option['test_batch_size'])
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'dynamic_lambdas': self.dynamic_lambdas,
+            'result_model': self.result_model.state_dict(),
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        result_model = cpt.get('result_model', None)
+        dynamic_lambdas = cpt.get('dynamic_lambdas', None)
+        if result_model is not None: self.result_model.load_state_dict(result_model)
+        if dynamic_lambdas is not None: self.dynamic_lambdas = dynamic_lambdas
 
 class Client(BasicClient):
     def reply(self, svr_pkg):

@@ -39,6 +39,23 @@ class Server(BasicServer):
         new_c = self.cg + fmodule._model_sum(dcs)/self.num_clients
         return new_model, new_c
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'cg': self.cg.state_dict(),
+            'clist': [ci.c.state_dict() if ci.c is not None else None for ci in self.clients],
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        cg = cpt.get('cg', None)
+        clist = cpt.get('clist', [None for _ in self.clients])
+        if cg is not None: self.cg.load_state_dict(cg)
+        for client_i, clist_i in zip(self.clients, clist):
+            if clist_i is not None:
+                client_i.c = self.cg.zeros_like()
+                client_i.c.load_state_dict(clist_i)
 
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):
