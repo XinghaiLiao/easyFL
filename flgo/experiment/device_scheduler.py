@@ -140,7 +140,7 @@ class AutoScheduler(BasicScheduler):
         tmp = copy.deepcopy(self.devices)
         sorted(tmp, key=lambda x:self.dev_state[x]['free_memory'])
         for did, dev in enumerate(tmp):
-            if self.check_available(dev) and self.max_processes_per_device>=num_processes_per_device[did]:
+            if self.check_available(dev) and self.max_processes_per_device>num_processes_per_device[did]:
                 return dev
         return None
 
