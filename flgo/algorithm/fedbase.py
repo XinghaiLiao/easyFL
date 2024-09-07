@@ -257,10 +257,10 @@ class BasicServer(BasicParty):
                     self.gv.logger.time_start('Eval Time Cost')
                     self.gv.logger.log_once()
                     self.gv.logger.time_end('Eval Time Cost')
-                    self._save_checkpoint()
                     if self.option.get('save_optimal', False): self.gv.logger.trace_optimal_state()
                 # check if early stopping
                 if self.gv.logger.early_stop(): break
+                if self.current_round % self.option.get('check_interval', 1) == 0: self._save_checkpoint()
                 self.current_round += 1
                 # decay learning rate
                 self.global_lr_scheduler(self.current_round)
