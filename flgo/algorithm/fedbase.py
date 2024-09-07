@@ -760,8 +760,8 @@ class BasicServer(BasicParty):
                 if not os.path.exists(cpt_path): os.makedirs(cpt_path)
                 cpt_name = self.gv.logger.get_output_name('')
                 cpts = os.listdir(cpt_path)
-                if len(cpts) == 0: return False
                 cpts = [p for p in cpts if cpt_name in p]
+                if len(cpts) == 0: return False
                 cpt_round = max([int(p.split('.')[-1]) for p in cpts])
                 cpt_path = os.path.join(cpt_path, '.'.join([cpt_name, str(cpt_round)]))
             try:

@@ -1355,7 +1355,13 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                         option_state[oid]['p'].start()
                         option_state[oid]['pid'] = option_state[oid]['p'].pid
                         scheduler.add_process(option_state[oid]['p'].pid)
-                        print('Process {} was created for args {}'.format(option_state[oid]['p'].pid,(task, algorithm_name, opt, model_name, Logger, Simulator, scene)))
+                        print("*"*40+'Create')
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene'])
+                        tb.add_row([option_state[oid]['p'].pid, task, algorithm_name, model_name, Logger.__name__, Simulator.__name__, scene, ])
+                        print(tb)
+                        print(f"Args = {opt}")
+                        print("*" * 46)
+                        # print('Process {} was created for args {}'.format(option_state[oid]['p'].pid,()))
             else:
                 if option_state[oid]['p'].exitcode is not None:
                     try:
@@ -1375,8 +1381,22 @@ def run_in_parallel(task: str, algorithm, options:list = [], model=None, devices
                         option_state[oid]['output'] = tmp[0]
                         if es_key is None: es_key = tmp[1]
                         if es_drct is None: es_drct = tmp[2]
+                        print("*" * 38 + 'Finished')
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene',])
+                        tb.add_row([option_state[oid]['pid'], task, algorithm_name, model_name, Logger.__name__, Simulator.__name__, scene,  ])
+                        print(tb)
+                        print(f"Args = {opt}")
+                        print("*" * 46)
+                        del tb
                     else:
-                        print(tmp[1])
+                        print("*" * 40 + 'Exited')
+                        print(f"Error: {tmp[1]}")
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene',])
+                        tb.add_row([option_state[oid]['pid'], task, algorithm_name, model_name, Logger.__name__, Simulator.__name__, scene,  ])
+                        print(tb)
+                        print(f"Args = {opt}")
+                        print("*" * 46)
+                        del tb
                         if "All the received local models have parameters of nan value." in tmp[1]:
                             option_state[oid]['completed'] = True
                             option_state[oid]['output'] = tmp[1]
@@ -1681,7 +1701,12 @@ def multi_tune(tune_args: Union[list, dict], scheduler=None, target_path='.'):
                         config_state[config_id]['p'].start()
                         config_state[config_id]['pid'] = config_state[config_id]['p'].pid
                         scheduler.add_process(config_state[config_id]['p'].pid)
-                        print('Process {} was created for args {}'.format(config_state[config_id]['p'].pid,config))
+                        print("*" * 40 + 'Create')
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene'])
+                        tb.add_row([config_state[config_id]['p'].pid, config[0], config[1], config[3], config[4].__name__, config[5].__name__, config[6], ])
+                        print(tb)
+                        print(f"Args = {config[2]}")
+                        print("*" * 46)
             else:
                 if config_state[config_id]['p'].exitcode is not None:
                     try:
@@ -1700,8 +1725,22 @@ def multi_tune(tune_args: Union[list, dict], scheduler=None, target_path='.'):
                         config_state[config_id]['output'] = tmp[0]
                         if es_keys[all_configuration_output[config_id]] is None: es_keys[all_configuration_output[config_id]] = tmp[1]
                         if es_drcts[all_configuration_output[config_id]] is None: es_drcts[all_configuration_output[config_id]] = tmp[2]
+                        print("*" * 38 + 'Finished')
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene',])
+                        tb.add_row([config_state[config_id]['pid'], config[0], config[1], config[3], config[4].__name__, config[5].__name__, config[6],  ])
+                        print(tb)
+                        print(f"Args = {config[2]}")
+                        print("*" * 46)
+                        del tb
                     else:
-                        print(tmp[1])
+                        print("*" * 40 + 'Exited')
+                        print(f"Error: {tmp[1]}")
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene',])
+                        tb.add_row([config_state[config_id]['pid'], config[0], config[1], config[3], config[4].__name__, config[5].__name__, config[6],  ])
+                        print(tb)
+                        print(f"Args = {config[2]}")
+                        print("*" * 46)
+                        del tb
                         if "All the received local models have parameters of nan value." in tmp[1]:
                             config_state[config_id]['completed'] = True
                             config_state[config_id]['output'] = tmp[1]
@@ -1921,7 +1960,14 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=Fals
                         runner_state[rid]['p'].start()
                         runner_state[rid]['pid'] = runner_state[rid]['p'].pid
                         scheduler.add_process(runner_state[rid]['p'].pid)
-                        print('Process {} was created for args {}'.format(runner_state[rid]['p'].pid,current_arg))
+                        print("*" * 40 + 'Create')
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene',])
+                        tb.add_row([runner_state[rid]['p'].pid, list_current_arg[0], list_current_arg[1], list_current_arg[3], list_current_arg[4].__name__, list_current_arg[5].__name__, list_current_arg[6], ])
+                        print(tb)
+                        print(f"Args = {list_current_arg[2]}")
+                        print("*" * 46)
+                        del tb
+                        # print('Process {} was created for args {}'.format(runner_state[rid]['p'].pid,current_arg))
             else:
                 if runner_state[rid]['p'].exitcode is not None:
                     try:
@@ -1938,8 +1984,22 @@ def multi_init_and_run(runner_args:list, devices = [], scheduler=None, mmap=Fals
                     if len(tmp) == 4:
                         runner_state[rid]['completed'] = True
                         runner_state[rid]['output'] = tmp[0]
+                        print("*" * 38 + 'Finished')
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene',])
+                        tb.add_row([runner_state[rid]['pid'], current_arg[0], current_arg[1], current_arg[3], current_arg[4].__name__, current_arg[5].__name__, current_arg[6], ])
+                        print(tb)
+                        print(f"Args = {current_arg[2]}")
+                        print("*" * 46)
+                        del tb
                     else:
-                        print(tmp[1])
+                        print("*" * 40 + 'Exited')
+                        print(f'Error = {tmp[1]}')
+                        tb = prettytable.PrettyTable(header=False, field_names=['ProcessID', 'Task', 'Algorithm', 'Model', 'Logger', 'Simulator', 'Scene',])
+                        tb.add_row([runner_state[rid]['pid'], current_arg[0], current_arg[1], current_arg[3], current_arg[4].__name__, current_arg[5].__name__, current_arg[6], ])
+                        print(tb)
+                        print(f"Args = {current_arg[2]}")
+                        print("*" * 46)
+                        del tb
                         if "All the received local models have parameters of nan value." in tmp[1]:
                             runner_state[rid]['completed'] = True
                             runner_state[rid]['output'] = tmp[1]
