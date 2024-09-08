@@ -62,7 +62,7 @@ import flgo.algorithm
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available'] # sampling options for the default sampling method in flgo.algorihtm.fedbase
 agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
-default_option_dict = {'check_interval':1, 'save_optimal':False, 'test_parallel':False, 'load_mode': '', 'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'r', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+default_option_dict = {'use_cache':False, 'check_interval':1, 'save_optimal':False, 'test_parallel':False, 'load_mode': '', 'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'r', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 if zmq is not None: _ctx = zmq.Context()
 else: _ctx = None
@@ -79,6 +79,7 @@ class GlobalVariable:
         self.TaskCalculator = TaskCalculator
         self.TaskPipe = TaskPipe
         self.crt_dev = 0
+        self.cache_path = ''
 
     def apply_for_device(self):
         r"""'
@@ -155,6 +156,7 @@ def read_option_from_command():
     parser.add_argument('--dataseed', help='seed for random initialization for data train/val/test partition', type=int, default=0)
     parser.add_argument('--gpu', nargs='*', help='GPU IDs and empty input is equal to using CPU', type=int)
     parser.add_argument('--server_with_cpu', help='the model parameters will be stored in the memory if True', action="store_true", default=False)
+    parser.add_argument('--use_cache', help="whether to use the cache to dynamically load parties' private variables into the memory from the disk" , action="store_true", default=False)
     parser.add_argument('--num_parallels', help="the number of parallels in the clients computing session", type=int, default=1)
     parser.add_argument('--parallel_type', help="the type of parallel: 't' means multi-threading, 'p' means multi-processing and 'r' means ray", type=str, default = 'r')
     parser.add_argument('--num_workers', help='the number of workers of DataLoader', type=int, default=0)
@@ -766,6 +768,10 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         'decentralized': felp.DecLogger,
         'hierarchical':felp.HierLogger,
     }
+    if option['use_cache']:
+        cache_dir = os.path.join(task, '.cache', uuid.uuid4().hex)
+        os.makedirs(cache_dir)
+        gv.cache_path = cache_dir
     assert scene in default_scene_logger.keys()
     if Logger is None: Logger = default_scene_logger[scene]
     logger = Logger(task=task, option=option, name=str(id(gv))+str(Logger), level=option['log_level'])

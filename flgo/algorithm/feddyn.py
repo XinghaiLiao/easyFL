@@ -51,6 +51,7 @@ class Server(BasicServer):
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):
         self.gradL = None
+        self.register_cache_var('gradL')
 
     @ fmodule.with_multi_gpus
     def train(self, model):

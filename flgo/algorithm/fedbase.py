@@ -2,6 +2,7 @@ import os
 import math
 import copy
 import collections
+import pickle
 from typing import Any, Callable
 from tqdm import tqdm
 import torch
@@ -22,6 +23,7 @@ class BasicParty:
         self.id = None  # the id for communicating
         self._object_map = {} # mapping objects according to their ids
         self._data_names = []
+        self._cache_vars = []
 
     def register_action_to_mtype(self, action_name: str, mtype):
         r"""
@@ -34,6 +36,50 @@ class BasicParty:
         if action_name not in self.__dict__.keys():
             raise NotImplementedError("There is no method named `{}` in the class instance.".format(action_name))
         self.actions[mtype] = self.__dict__[action_name]
+
+    def register_cache_var(self, *args):
+        r"""
+        Register variables that can be dynamically released to save memory efficiency
+
+        Args:
+            args (str): the name of variables
+        """
+        for x in args:
+            assert isinstance(x, str)
+            self._cache_vars.append(x)
+
+    def load_cache_vars(self, cache_path:str):
+        r"""
+        Load values of this party's _cache_vars from cached files
+
+        Args:
+            cache_path (str): the path of the cached files
+        """
+        if len(self._cache_vars)==0: return
+        if os.path.exists(cache_path):
+            with open(cache_path, 'rb') as file:
+                loaded_data = pickle.load(file)
+            for k in loaded_data.keys():
+                if k in self._cache_vars:
+                    setattr(self, k, loaded_data[k])
+
+    def dump_cache_vars(self, cache_path):
+        r"""
+        Dump values of this party's _cache_vars into cached files
+
+        Args:
+            cache_path (str): the path of the cached files
+        """
+        if len(self._cache_vars)==0: return
+        if not os.path.exists(os.path.dirname(cache_path)):
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        data_to_dump = {k: getattr(self, k) if hasattr(self, k) else None for k in self._cache_vars}
+        data_to_dump = {k: v for k, v in data_to_dump.items() if v is not None}
+        if len(data_to_dump)>0:
+            with open(cache_path, 'wb') as file:
+                pickle.dump(data_to_dump, file)
+            for k in self._cache_vars:
+                setattr(self, k, None)
 
     def message_handler(self, package):
         r"""
@@ -817,6 +863,7 @@ class BasicClient(BasicParty):
         self.option = option
         self.actions = {0: self.reply}
         self.default_action = self.reply
+        self.register_cache_var('model')
 
     @fmodule.with_multi_gpus
     def train(self, model):
@@ -1039,3 +1086,26 @@ class BasicClient(BasicParty):
         """
         self.device = dev
         self.calculator = self.gv.TaskCalculator(dev, self.calculator.optimizer_name)
+
+    def message_handler(self, package):
+        r"""
+        Handling the received message by excuting the corresponding action.
+
+        Args:
+            package (dict): the package received from other parties (i.e. the content of the message)
+
+        Returns:
+            action_reult
+        """
+        cache_path = os.path.join(self.gv.cache_path, f"cache_{self.get_classname()}_{self.id}")
+        if self.option['use_cache']:
+            if os.path.exists(cache_path): self.load_cache_vars(cache_path)
+        try:
+            mtype = package['__mtype__']
+        except:
+            raise KeyError("__mtype__ must be a key of the package")
+        if mtype not in self.actions.keys():
+            raise NotImplementedError("There is no action corresponding to message type {}.".format(mtype))
+        res = self.actions[mtype](package)
+        if self.option['use_cache']: self.dump_cache_vars(cache_path)
+        return res
