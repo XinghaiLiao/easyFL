@@ -798,7 +798,7 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
     ############################################### Simulation FL ###########################################
     if scene in ['horizontal', 'vertical', 'decentralized', 'hierarchical','parallel_horizontal']:
         if option['load_mode']=='mmap':
-            task_data = flgo.utils.shared_memory.load_task_data_from_npz(task, train_holdout=option['train_holdout'], test_holdout=option['test_holdout'], local_test=option['local_test'], local_test_ratio=option['local_test_ratio'], seed=option['dataseed'], create=True)
+            task_data = flgo.utils.shared_memory.load_task_data_from_npy(task, train_holdout=option['train_holdout'], test_holdout=option['test_holdout'], local_test=option['local_test'], local_test_ratio=option['local_test_ratio'], seed=option['dataseed'], create=True)
         else:
             task_data = task_pipe.load_data(option)
             if option['load_mode']=='mem':
@@ -1106,7 +1106,7 @@ def _init_with_meta(task_meta:dict, task: str, algorithm, option = {}, model=Non
     ############################################### Simulation FL ###########################################
     if scene in ['horizontal', 'vertical', 'decentralized', 'hierarchical','parallel_horizontal']:
         if option['load_mode']=='mmap':
-            task_data = flgo.utils.shared_memory.load_task_data_from_npz(task, train_holdout=option['train_holdout'],
+            task_data = flgo.utils.shared_memory.load_task_data_from_npy(task, train_holdout=option['train_holdout'],
                                                                          test_holdout=option['test_holdout'],
                                                                          local_test=option['local_test'],
                                                                          local_test_ratio=option['local_test_ratio'],

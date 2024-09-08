@@ -244,9 +244,9 @@ def load_taskdata_from_memmap_meta(task_meta):
             task_data[party][data_name] = load_dataset_from_memmap_meta(**task_meta[party][data_name])
     return task_data
 
-def create_task_data_npz(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test=False, local_test_ratio=0.5, seed=0):
+def create_task_data_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test=False, local_test_ratio=0.5, seed=0):
     """
-    Convert task data into .npz files and store them at task/.mmap/task_config_info/*.npz
+    Convert task data into .npy files and store them at task/.mmap/task_config_info/*.npy
 
     Args:
         task (str): the path of the task
@@ -271,21 +271,30 @@ def create_task_data_npz(task, train_holdout:float=0.2, test_holdout:float=0.0, 
             data = task_data[party][data_name]
             if data is None: continue
             sharable_data = dataset2sharable(data)
-            file_name = os.path.join(os.path.abspath(memmap_path), "_".join([party, data_name])+'.npz')
-            saved_data = {f'{i}': sharable_data[i] for i in range(len(sharable_data))}
-            np.savez(file_name, **saved_data)
+            # save sharable data
+            file_names = [os.path.join(os.path.abspath(memmap_path), "_".join([party, data_name, str(i)])+'.npy') for i in range(len(sharable_data))]
+            dtypes = [str(arr.dtype) for arr in sharable_data]
+            shapes = [tuple(arr.shape) for arr in sharable_data]
+            for i, file_name in enumerate(file_names):
+                np.save(file_name, sharable_data[i], allow_pickle=True)
             task_meta[party][data_name] = {
-                "name": file_name,
+                "name": file_names,
+                'dtype': dtypes,
+                'shape': shapes
             }
+            # ================================use .npz lead to no sharable memory
+            # file_name = os.path.join(os.path.abspath(memmap_path), "_".join([party, data_name])+'.npz')
+            # saved_data = {f'{i}': sharable_data[i] for i in range(len(sharable_data))}
+            # np.savez(file_name, **saved_data)
     meta_file = os.path.join(memmap_path, 'meta.json')
     with open(meta_file, 'w') as f:
         json.dump(task_meta, f)
-    print("Task data has been successfully converted into .npz")
+    print("Task data has been successfully converted into .npy")
     return True
 
-def load_task_data_from_npz(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test=False, local_test_ratio=0.5, seed=0, create=False):
+def load_task_data_from_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test=False, local_test_ratio=0.5, seed=0, create=False):
     """
-    Load task data from task/.mmap/task_config_info/*.npz in memmap way
+    Load task data from task/.mmap/task_config_info/*.npy in memmap way
 
     Args:
         task (str): the path of the task
@@ -294,7 +303,7 @@ def load_task_data_from_npz(task, train_holdout:float=0.2, test_holdout:float=0.
         local_test          (bool): if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.default=False.
         local_test_ratio    (flt):  valid if local_test is True. The ratio of local test dataset holdout from local validation data.
         dataseed            (int):  seed for random initialization for data train/val/test partition', default=0
-        create              (bool): create the npz file of the task if the target files doesn't exist
+        create              (bool): create the npy file of the task if the target files doesn't exist
 
     Returns:
         task_data           (dict): the task data
@@ -304,7 +313,7 @@ def load_task_data_from_npz(task, train_holdout:float=0.2, test_holdout:float=0.
     memmap_path = os.path.join(task, '.mmap',"L{:.2f}G{:.2f}T{}R{:.2f}S{}".format(train_holdout, test_holdout, int(local_test), local_test_ratio, seed))
     if not os.path.exists(memmap_path):
         if create:
-            create_task_data_npz(task, train_holdout, test_holdout, local_test, local_test_ratio, seed)
+            create_task_data_npy(task, train_holdout, test_holdout, local_test, local_test_ratio, seed)
         else:
             raise FileNotFoundError("Task npy files were not found. Use flgo.utils.shared_memory.create_task_npy to create the target.")
     meta_file = os.path.join(memmap_path, 'meta.json')
@@ -315,9 +324,12 @@ def load_task_data_from_npz(task, train_holdout:float=0.2, test_holdout:float=0.
         task_data[party] = {}
         for data_name in task_meta[party]:
             party_data = task_meta[party][data_name]
-            file_name = party_data['name']
-            sharable_data = np.load(file_name, mmap_mode='r')
-            sharable_data = [sharable_data[k] for k in sharable_data.files]
+            file_names = party_data['name']
+            dtypes = [np.dtype(s) for s in party_data['dtype']]
+            shapes = [tuple(s) for s in party_data['shape']]
+            sharable_data = [np.load(file_name, mmap_mode='r', allow_pickle=True) for file_name, dtype, shape in zip(file_names, dtypes, shapes)]
+            # sharable_data = np.load(file_name, mmap_mode='r')
+            # sharable_data = [sharable_data[k] for k in sharable_data.files]
             dataset = sharable2dataset(sharable_data)
             task_data[party][data_name] = dataset
     return task_data
