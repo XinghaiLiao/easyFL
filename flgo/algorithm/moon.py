@@ -43,6 +43,7 @@ class Client(BasicClient):
     def initialize(self, *args, **kwargs):
         self.local_model = None
         self.output_layer = self.server.output_layer
+        self.register_cache_var('local_model')
 
     @fmodule.with_multi_gpus
     def train(self, model):

@@ -16,6 +16,7 @@ class Server(BasicServer):
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):
         self.local_grad_controller = self.server.model.zeros_like().to('cpu')
+        self.register_cache_var('local_grad_controller')
 
     @fmodule.with_multi_gpus
     def train(self, model):

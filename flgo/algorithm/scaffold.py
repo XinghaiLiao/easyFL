@@ -60,6 +60,7 @@ class Server(BasicServer):
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):
         self.c = None
+        self.register_cache_var('c')
 
     @fmodule.with_multi_gpus
     def train(self, model, cg):
