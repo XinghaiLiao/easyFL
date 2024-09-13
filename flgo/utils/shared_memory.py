@@ -1,3 +1,6 @@
+import collections
+import resource
+from itertools import chain
 try:
     import ujson as json
 except:
@@ -11,6 +14,96 @@ import torch.utils.data as tud
 import sys
 import pickle
 from tqdm import tqdm
+
+class MemmapManager:
+    def __init__(self, root:str, num_elems: int=-1):
+        self.root = root
+        self.num_blocks = 0
+        self.crt_block_id = 0
+        self.crt_block_size = 0
+        self.data_block = collections.defaultdict(list)
+        self.num_elems = num_elems
+        self.item_shape = [None for _ in range(num_elems)]
+        self.data_meta = self.load_meta() if os.path.exists(os.path.join(self.root, 'meta.json')) else {}
+        self.block_map = [[]]
+        self.block_buffer = {}
+
+    def add(self, data, name:str):
+        assert len(data)==self.num_elems
+        data_meta = {
+            'num_elems': self.num_elems,
+            'block_id': self.crt_block_id,
+            'size': [],
+        }
+        for i in range(self.num_elems):
+            self.data_block[i].append(data[i])
+            data_meta['size'].append(len(data[i]))
+        self.data_meta[name] = data_meta
+        self.block_map[self.crt_block_id].append(name)
+        self.crt_block_size += 1
+
+    def clear_block(self):
+        self.data_block = collections.defaultdict(list)
+        self.block_map.append([])
+        self.num_blocks += 1
+        self.crt_block_id += 1
+        self.crt_block_size += 1
+
+    def is_empty(self):
+        return len(list(self.data_block.keys()))==0
+
+    def dump(self):
+        block_name = f"db{self.crt_block_id}"
+        data_names = self.block_map[self.crt_block_id]
+        for dname in data_names:
+            self.data_meta[dname]['index'] = []
+            self.data_meta[dname]['block_files'] = []
+        for elem_id in range(self.num_elems):
+            file_name = os.path.join(self.root, '.'.join([block_name, str(elem_id), 'npy']))
+            try:
+                data_to_save = np.concatenate(self.data_block[elem_id], axis=0)
+                sizes = [0]+[self.data_meta[dname]['size'][elem_id] for dname in data_names]
+                indices = np.cumsum(sizes).astype(np.int32).tolist()
+                for d_idx,dname in zip(indices, data_names):
+                    self.data_meta[dname]['index'].append(d_idx)
+            except ValueError as e:
+                # flatten
+                shapes = [tuple(d.shape) for d in self.data_block[elem_id]]
+                data_to_save = [di.ravel() for di in self.data_block[elem_id]]
+                sizes = [0]+[len(di) for di in data_to_save]
+                indices = np.cumsum(sizes).astype(np.int32).tolist()
+                data_to_save = np.concatenate(data_to_save)
+                sizes = sizes[1:]
+                self.data_meta[dname]['shape'] = []
+                for dshape, dsize, d_idx, dname in zip(shapes, sizes, indices, data_names):
+                    self.data_meta[dname]['index'].append(d_idx)
+                    self.data_meta[dname]['shape'].append(dshape)
+                    self.data_meta[dname]['size'][elem_id] = dsize
+            for dname in data_names: self.data_meta[dname]['block_files'].append(file_name)
+            np.save(file_name, data_to_save, allow_pickle=True)
+        self.clear_block()
+
+    def save_meta(self):
+        meta_file = os.path.join(self.root, 'meta.json')
+        with open(meta_file, 'w') as f:
+            json.dump(self.data_meta, f)
+
+    def load_meta(self):
+        meta_file = os.path.join(self.root, 'meta.json')
+        with open(meta_file, 'r') as f:
+            data_meta = json.load(f)
+        return data_meta
+
+    def get(self, data_name):
+        dmeta = self.data_meta[data_name]
+        num_elems, block_files, indices, sizes = dmeta['num_elems'], dmeta['block_files'], dmeta['index'], dmeta['size']
+        for block in block_files:
+            if block not in self.block_buffer:
+                self.block_buffer[block] = np.load(block, mmap_mode='r', allow_pickle=True)
+        shapes = dmeta.get('shape', None)
+        sharable_data = [self.block_buffer[block_files[i]][indices[i]: indices[i]+sizes[i]] for i in range(num_elems)]
+        if shapes is not None: sharable_data = [sharable_data[i].reshape(shapes[i]) for i in range(num_elems)]
+        return sharable_data
 
 def get_dict_size(obj, seen=None):
     if seen is None:
@@ -69,7 +162,7 @@ def _check_vector_shapes(vec_list):
             return False
     return True
 
-def dataset2sharable(dataset):
+def dataset2sharable(dataset, batch_size=512):
     """
     Convert a dataset into sharable format, i.e., numpy arrays of features and the type information for recovering them
 
@@ -83,11 +176,10 @@ def dataset2sharable(dataset):
     item_size = len(first_item)
     if not isinstance(first_item, tuple): first_item = tuple(first_item)
     etypes = [type(ei).__name__ if type(ei) not in TYPE_CANDIDATES else 'unknown' for ei in first_item]
-    dataset_size = len(dataset)
-    res = [[] for _ in range(item_size)]
-    for i in range(dataset_size):
-        for j in range(item_size):
-            res[j].append(dataset[i][j])
+    def collate_func(batch):
+        return [list(xi) for xi in list(zip(*batch))]
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_func)
+    res = list(map(lambda x: list(chain(*x)), zip(*data_loader)))
     for j in range(item_size):
         if etypes[j] in ['int', 'float', 'str', 'int64', 'float64']:
             res[j] = np.array(res[j])
@@ -244,7 +336,7 @@ def load_taskdata_from_memmap_meta(task_meta):
             task_data[party][data_name] = load_dataset_from_memmap_meta(**task_meta[party][data_name])
     return task_data
 
-def create_task_data_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test=False, local_test_ratio=0.5, seed=0):
+def create_task_data_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, local_test:bool=False, local_test_ratio:float=0.5, seed:int=0, batch_size:int=512):
     """
     Convert task data into .npy files and store them at task/.mmap/task_config_info/*.npy
 
@@ -254,8 +346,8 @@ def create_task_data_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, 
         test_holdout        (flt):  the rate of holding out the validation dataset from the testing datasets owned by the server', default=0.0
         local_test          (bool): if this term is set True and train_holdout>0, (0.5*train_holdout) of data will be set as client.test_data.default=False.
         local_test_ratio    (flt):  valid if local_test is True. The ratio of local test dataset holdout from local validation data.
-        dataseed            (int):  seed for random initialization for data train/val/test partition', default=0
-
+        seed            (int):  seed for random initialization for data train/val/test partition', default=0
+        batch_size      (int): the batch size of data loader
     Returns:
         if_success          (bool): True if the task data has been successfully converted
     """
@@ -264,31 +356,37 @@ def create_task_data_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, 
     if not os.path.exists(memmap_path): os.makedirs(memmap_path)
     else: raise FileExistsError(f'{memmap_path} already exists')
     task_data = fuf.load_task_data(task,  train_holdout, test_holdout, local_test, local_test_ratio, seed)
+    all_keys = list(task_data.keys())
+    example_data = None
+    for k in all_keys:
+        datak = task_data[k]
+        for kk in datak.keys():
+            datakk = datak[kk]
+            if datakk is not None and len(datakk)>0:
+                example_data = datakk[0]
+                break
+        if example_data is not None: break
+    soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+    num_elems = len(example_data)+1 if isinstance(example_data, tuple) else 2
+    num_datas = sum([len(task_data[k]) for k in task_data])
+    files_per_block = max(num_datas*num_elems/max(int(0.05*soft_limit), 10), 1)
+    memmap_manager = MemmapManager(memmap_path, num_elems)
     task_meta = {}
+    crt_block_files = 0
     for party in tqdm(task_data, desc='Creating Task: '):
         task_meta[party] = {}
         for data_name in task_data[party]:
             data = task_data[party][data_name]
             if data is None: continue
-            sharable_data = dataset2sharable(data)
-            # save sharable data
-            file_names = [os.path.join(os.path.abspath(memmap_path), "_".join([party, data_name, str(i)])+'.npy') for i in range(len(sharable_data))]
-            dtypes = [str(arr.dtype) for arr in sharable_data]
-            shapes = [tuple(arr.shape) for arr in sharable_data]
-            for i, file_name in enumerate(file_names):
-                np.save(file_name, sharable_data[i], allow_pickle=True)
-            task_meta[party][data_name] = {
-                "name": file_names,
-                'dtype': dtypes,
-                'shape': shapes
-            }
-            # ================================use .npz lead to no sharable memory
-            # file_name = os.path.join(os.path.abspath(memmap_path), "_".join([party, data_name])+'.npz')
-            # saved_data = {f'{i}': sharable_data[i] for i in range(len(sharable_data))}
-            # np.savez(file_name, **saved_data)
-    meta_file = os.path.join(memmap_path, 'meta.json')
-    with open(meta_file, 'w') as f:
-        json.dump(task_meta, f)
+            sharable_data = dataset2sharable(data, batch_size=batch_size)
+            memmap_manager.add(sharable_data, f"{party}.{data_name}")
+            crt_block_files += 1
+        if crt_block_files >= files_per_block:
+            memmap_manager.dump()
+            crt_block_files = 0
+    if not memmap_manager.is_empty():
+        memmap_manager.dump()
+    memmap_manager.save_meta()
     print("Task data has been successfully converted into .npy")
     return True
 
@@ -316,22 +414,14 @@ def load_task_data_from_npy(task, train_holdout:float=0.2, test_holdout:float=0.
             create_task_data_npy(task, train_holdout, test_holdout, local_test, local_test_ratio, seed)
         else:
             raise FileNotFoundError("Task npy files were not found. Use flgo.utils.shared_memory.create_task_npy to create the target.")
-    meta_file = os.path.join(memmap_path, 'meta.json')
-    with open(meta_file, 'r') as f:
-        task_meta = json.load(f)
+    memmap_manager = MemmapManager(memmap_path)
     task_data = {}
-    for party in tqdm(task_meta, desc='Loading Task: '):
-        task_data[party] = {}
-        for data_name in task_meta[party]:
-            party_data = task_meta[party][data_name]
-            file_names = party_data['name']
-            dtypes = [np.dtype(s) for s in party_data['dtype']]
-            shapes = [tuple(s) for s in party_data['shape']]
-            sharable_data = [np.load(file_name, mmap_mode='r', allow_pickle=True) for file_name, dtype, shape in zip(file_names, dtypes, shapes)]
-            # sharable_data = np.load(file_name, mmap_mode='r')
-            # sharable_data = [sharable_data[k] for k in sharable_data.files]
-            dataset = sharable2dataset(sharable_data)
-            task_data[party][data_name] = dataset
+    for dname in memmap_manager.data_meta:
+        party, data_name = dname.split('.')
+        if party not in task_data: task_data[party] = {}
+        sharable_data = memmap_manager.get(dname)
+        dataset = sharable2dataset(sharable_data)
+        task_data[party][data_name] = dataset
     return task_data
 
 if __name__=='__main__':
