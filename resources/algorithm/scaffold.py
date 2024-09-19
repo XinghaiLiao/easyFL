@@ -39,10 +39,28 @@ class Server(BasicServer):
         new_c = self.cg + fmodule._model_sum(dcs)/self.num_clients
         return new_model, new_c
 
+    def save_checkpoint(self):
+        cpt = super().save_checkpoint()
+        cpt.update({
+            'cg': self.cg.state_dict(),
+            'clist': [ci.c.state_dict() if ci.c is not None else None for ci in self.clients],
+        })
+        return cpt
+
+    def load_checkpoint(self, cpt):
+        super().load_checkpoint(cpt)
+        cg = cpt.get('cg', None)
+        clist = cpt.get('clist', [None for _ in self.clients])
+        if cg is not None: self.cg.load_state_dict(cg)
+        for client_i, clist_i in zip(self.clients, clist):
+            if clist_i is not None:
+                client_i.c = self.cg.zeros_like()
+                client_i.c.load_state_dict(clist_i)
 
 class Client(BasicClient):
     def initialize(self, *args, **kwargs):
         self.c = None
+        self.register_cache_var('c')
 
     @fmodule.with_multi_gpus
     def train(self, model, cg):
@@ -76,7 +94,7 @@ class Client(BasicClient):
             loss.backward()
             # y_i <-- y_i - eta_l ( g_i(y_i)-c_i+c )  =>  g_i(y_i)' <-- g_i(y_i)-c_i+c
             for pm, pcg, pc in zip(model.parameters(), cg.parameters(), self.c.parameters()):
-                pm.grad = pm.grad - pc + pcg
+                if pm.grad is not None: pm.grad = pm.grad - pc + pcg
             if self.clip_grad>0:torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=self.clip_grad)
             optimizer.step()
         dy = model - src_model
