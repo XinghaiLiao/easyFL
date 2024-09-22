@@ -5,10 +5,10 @@ from tqdm import trange
 import flgo.algorithm.fedbase as fab
 
 class Server(fab.BasicServer):
-    def initialize(self, *args, **kwargs):
-        self.init_algo_para({'tune_key':'loss', 'larger_is_better': False})
-
     def run(self):
+        tune_key, tune_direction = self.gv.logger.get_es_key(), self.gv.logger.get_es_direction()
+        tune_key = tune_key.split('_')[-1]
+        for c in self.clients: c.tune_key, c.tune_direction = tune_key, tune_direction
         self.gv.logger.time_start('Total Time Cost')
         # evaluating initial model performance
         self.gv.logger.info("--------------Initial Evaluation--------------")
@@ -36,6 +36,7 @@ class Client(fab.BasicClient):
         epoch_iter = trange(self.num_epochs+1)
         op_model_dict = copy.deepcopy(self.model.state_dict())
         op_met = self.test(self.model, 'val')
+        # op_met = {'_'.join(['local', 'val', k] if self.tune_key.startswith('local') else ['val', k]): v for k,v in op_met.items()}
         op_epoch = 0
         for e in epoch_iter:
             if e<self.num_epochs:
@@ -47,17 +48,19 @@ class Client(fab.BasicClient):
                     if self.clip_grad > 0: torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(), max_norm=self.clip_grad)
                     optimizer.step()
                 val_metric = self.test(self.model, 'val')
-                if (self.larger_is_better and val_metric[self.tune_key]>op_met[self.tune_key]) or ((not self.larger_is_better) and val_metric[self.tune_key]<op_met[self.tune_key]):
+                # val_metric = {'_'.join(['local', 'val', k] if self.tune_key.startswith('local') else ['val', k]): v for k, v in val_metric.items()}
+                if val_metric[self.tune_key]*self.tune_direction>op_met[self.tune_key]:
                     op_met = val_metric
                     op_epoch = e+1
                     op_model_dict = copy.deepcopy(self.model.state_dict())
-                terms = ["Client {}".format(self.id), "Epoch {}/{}".format(e+1, self.num_epochs)]
-                terms.extend(['val_{}: {:.4f}'.format(k,v) for k,v in val_metric.items()])
-                epoch_iter.set_description("\t".join(terms))
+                else:
+                    if self.option['early_stop']>0 and (e+1 - op_epoch>=self.option['early_stop']):
+                        epoch_iter.set_description("\t".join(["Client {}".format(self.id), "Optimal Epoch {}/{}".format(op_epoch, self.num_epochs)]+['{}: {:.4f}'.format(k, v) for k, v in op_met.items()]))
+                        self.model.load_state_dict(op_model_dict)
+                        break
+                epoch_iter.set_description("\t".join(["Client {}".format(self.id), "Epoch {}/{}".format(e+1, self.num_epochs)] + ['{}: {:.4f}'.format(k,v) for k,v in val_metric.items()]))
             else:
-                terms = ["Client {}".format(self.id), "Optimal Epoch {}/{}".format(op_epoch, self.num_epochs)]
-                terms.extend(['val_{}: {:.4f}'.format(k, v) for k, v in op_met.items()])
-                epoch_iter.set_description("\t".join(terms))
+                epoch_iter.set_description("\t".join(["Client {}".format(self.id), "Optimal Epoch {}/{}".format(op_epoch, self.num_epochs)] + ['{}: {:.4f}'.format(k, v) for k, v in op_met.items()]))
                 self.model.load_state_dict(op_model_dict)
         return
 

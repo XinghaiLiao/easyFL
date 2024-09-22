@@ -1,5 +1,8 @@
 import collections
-import resource
+try:
+    import resource
+except:
+    resource = None
 from itertools import chain
 try:
     import ujson as json
@@ -366,7 +369,10 @@ def create_task_data_npy(task, train_holdout:float=0.2, test_holdout:float=0.0, 
                 example_data = datakk[0]
                 break
         if example_data is not None: break
-    soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+    if resource is not None:
+        soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+    else:
+        soft_limit = 100
     num_elems = len(example_data)+1 if isinstance(example_data, tuple) else 2
     num_datas = sum([len(task_data[k]) for k in task_data])
     files_per_block = max(num_datas*num_elems/max(int(0.05*soft_limit), 10), 1)
