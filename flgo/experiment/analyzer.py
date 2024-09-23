@@ -420,13 +420,13 @@ class PaintObject:
         ...         ax.legend()
     ```
     """
-    def __init__(self, rec: JsonRecord, args: dict, obj_option: dict, draw_func: str):
+    def __init__(self, rec: JsonRecord, args: dict, obj_option: dict, draw_func: str, legend=True):
         self.rec = rec
         self.args = args
         self.obj_option = obj_option
         self.draw_func = draw_func
         self.para = (rec.data[v] for v in args.values())
-        self.with_legend = True
+        self.with_legend = legend
 
     def draw(self, ax):
         if 'label' in self.obj_option.keys() or 'label' not in self.rec.data.keys():
@@ -435,6 +435,9 @@ class PaintObject:
             eval('ax.' + str(self.draw_func) + '(*self.para, **self.obj_option, label=self.rec.data["label"])')
         if self.with_legend: eval('ax.legend()')
         return
+
+    def set_legend(self, legend:bool):
+        self.with_legend = legend
 
 class Curve(PaintObject):
     """Curve Object"""
@@ -486,12 +489,14 @@ class Painter:
         save_text (bool): whether to store the figures into the disk
         path (str): the storing path
         format (str): the storing format
+        legend (bool): whether to draw the legend or not
     """
-    def __init__(self, records: list, save_figure=False, path:str='.', format='png'):
+    def __init__(self, records: list, save_figure=False, path:str='.', format='png', legend:bool=True):
         self.records = records
         self.save_figure = save_figure
         self.path = path
         self.format = format
+        self.legend = legend
 
     def create_figure(self, object_class, fig_config):
         r"""
@@ -538,6 +543,7 @@ class Painter:
         obj_options = self._generate_obj_option(fig_config['obj_option']) if 'obj_option' in fig_config.keys() else [{} for _ in self.records]
         objects = [object_class(rec, args, obj_option) for rec, obj_option in zip(self.records, obj_options)]
         for ob,axi in zip(objects, axs):
+            ob.set_legend(self.legend)
             ob.draw(axi)
         if 'fig_option' in fig_config.keys():
             if 'no_legend' in fig_config['fig_option'].keys():
