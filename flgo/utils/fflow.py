@@ -32,7 +32,7 @@ try:
     from collections import Iterable
 except ImportError:
     from collections.abc import Iterable
-
+import fcntl
 import numpy as np
 import torch
 try:
@@ -2117,7 +2117,9 @@ def set_data_root(data_root:str=None):
             raise TypeError('data_root must be a dir')
         crt_root = os.path.abspath(data_root).strip()
         root_name = '"'+crt_root+'"'
+
     with open(file_path, 'r', encoding=sys.getfilesystemencoding()) as inf:
+        fcntl.flock(inf, fcntl.LOCK_SH)  # 加锁
         lines = inf.readlines()
         idx = -1
         for i,line in enumerate(lines):
@@ -2126,8 +2128,12 @@ def set_data_root(data_root:str=None):
                 break
         if idx>0:
             lines[idx] = "data_root = "+ root_name
+        fcntl.flock(inf, fcntl.LOCK_UN)  # 解锁
+
     with open(file_path, 'w', encoding=sys.getfilesystemencoding()) as outf:
+        fcntl.flock(inf, fcntl.LOCK_EX)  # 加锁
         outf.writelines(lines)
+        fcntl.flock(inf, fcntl.LOCK_UN)  # 解锁
     flgo.benchmark.data_root = crt_root
     print('Data root directory has successfully been changed to {}'.format(crt_root))
     return
