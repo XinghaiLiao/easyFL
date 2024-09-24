@@ -2131,9 +2131,9 @@ def set_data_root(data_root:str=None):
         fcntl.flock(inf, fcntl.LOCK_UN)  # 解锁
 
     with open(file_path, 'w', encoding=sys.getfilesystemencoding()) as outf:
-        fcntl.flock(inf, fcntl.LOCK_EX)  # 加锁
+        fcntl.flock(outf, fcntl.LOCK_EX)  # 加锁
         outf.writelines(lines)
-        fcntl.flock(inf, fcntl.LOCK_UN)  # 解锁
+        fcntl.flock(outf, fcntl.LOCK_UN)  # 解锁
     flgo.benchmark.data_root = crt_root
     print('Data root directory has successfully been changed to {}'.format(crt_root))
     return
