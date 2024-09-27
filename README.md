@@ -46,7 +46,7 @@ Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 
 
 <center>
-<img src="https://github.com/user-attachments/assets/f3ff4df2-02ef-4fcf-94f0-393e99a38ca0" width=180/>
+<img src="https://github.com/user-attachments/assets/230247bc-8fce-4821-901b-d0e22ca360fd" width=180/>
 <img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=180/>
 </center>
 
