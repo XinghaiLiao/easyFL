@@ -39,7 +39,7 @@ try:
     import yaml
 except ModuleNotFoundError:
     warnings.warn("Module pyyaml is not installed. The configuration cannot be loaded by .yml file.")
-
+import traceback
 import flgo.simulator
 import flgo.simulator.default_simulator
 import flgo.simulator.base
@@ -1253,7 +1253,7 @@ def _call_by_process_with_meta(task_meta, task, algorithm_name,  opt, model_name
         os.path.join(runner.gv.logger.get_output_path(), runner.gv.logger.get_output_name()), es_key, es_drct, pid)
         send_end.send(res)
     except Exception as e:
-        s = 'Process {} exits with error:" {}". '.format(pid, str(e))
+        s = 'Process {} exits with error:" {}". \nTraceback Info: {}'.format(pid, str(e), traceback.format_exc())
         res = (opt, s, pid)
         send_end.send(res)
 
@@ -1294,7 +1294,7 @@ def _call_by_process(task, algorithm_name,  opt, model_name, Logger, Simulator, 
         res = (os.path.join(runner.gv.logger.get_output_path(), runner.gv.logger.get_output_name()), es_key, es_drct, pid)
         send_end.send(res)
     except Exception as e:
-        s = 'Process {} exits with error:" {}". '.format(pid, str(e))
+        s = 'Process {} exits with error:" {}". \nTraceback Info: {}'.format(pid, str(e), traceback.format_exc())
         res = (opt, s, pid)
         send_end.send(res)
 
