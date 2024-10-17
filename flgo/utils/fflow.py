@@ -62,7 +62,7 @@ import flgo.algorithm
 sample_list=['uniform', 'md', 'full', 'uniform_available', 'md_available', 'full_available'] # sampling options for the default sampling method in flgo.algorihtm.fedbase
 agg_list=['uniform', 'weighted_scale', 'weighted_com'] # aggregation options for the default aggregating method in flgo.algorihtm.fedbase
 optimizer_list=['SGD', 'Adam', 'RMSprop', 'Adagrad'] # supported optimizers
-default_option_dict = {'use_cache':False, 'check_interval':1, 'save_optimal':False, 'test_parallel':False, 'load_mode': '', 'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'r', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
+default_option_dict = {'torch_num_threads':1, 'use_cache':False, 'check_interval':1, 'save_optimal':False, 'test_parallel':False, 'load_mode': '', 'save_checkpoint':'', 'load_checkpoint':'','pretrain': '', 'sample': 'md', 'aggregate': 'uniform', 'num_rounds': 20, 'proportion': 0.2, 'learning_rate_decay': 0.998, 'lr_scheduler': '-1', 'early_stop': -1, 'num_epochs': 5, 'num_steps': -1, 'learning_rate': 0.1, 'batch_size': 64.0, 'optimizer': 'SGD', 'clip_grad':0.0,'momentum': 0.0, 'weight_decay': 0.0, 'num_edge_rounds':5, 'algo_para': [], 'train_holdout': 0.1, 'test_holdout': 0.0, 'local_test':False, 'local_test_ratio':0.5, 'seed': 0,'dataseed':0, 'gpu': [], 'server_with_cpu': False, 'num_parallels': 1, 'parallel_type':'r', 'num_workers': 0, 'pin_memory':False,'test_batch_size': 512,'pin_memory':False ,'simulator': 'default_simulator', 'availability': 'IDL', 'connectivity': 'IDL', 'completeness': 'IDL', 'responsiveness': 'IDL', 'logger': 'basic_logger', 'log_level': 'INFO', 'log_file': False, 'no_log_console': False, 'no_overwrite': False, 'eval_interval': 1}
 
 if zmq is not None: _ctx = zmq.Context()
 else: _ctx = None
@@ -165,7 +165,7 @@ def read_option_from_command():
     parser.add_argument('--drop_last', help='drop_last option of DataLoader, default is False', action="store_true", default=False)
     parser.add_argument('--test_batch_size', help='the batch_size used in testing phase;', type=int, default=512)
     parser.add_argument('--test_parallel', help='whether to use nn.DataParallel to accelerate the testing process', action="store_true", default=False)
-
+    parser.add_argument('--torch_num_threads', help='parameter of torch.set_num_threads', type=int, default=1)
     """Simulator Options"""
     # the simulating systemic configuration of clients and the server that helps constructing the heterogeity in the network condition & computing power
     parser.add_argument('--availability', help="client availability mode", type=str, default = 'IDL')
@@ -728,6 +728,8 @@ def init(task: str, algorithm, option = {}, model=None, Logger: flgo.experiment.
         else:
             default_option[op_key] = option[op_key]
     option = default_option
+    TORCH_NUM_THREADS = option.get('torch_num_threads', 0)
+    if TORCH_NUM_THREADS>0: torch.set_num_threads(TORCH_NUM_THREADS)
     setup_seed(seed=option['seed'])
     option['task'] = task
     option['algorithm'] = (algorithm.__name__).split('.')[-1]
@@ -1040,6 +1042,8 @@ def _init_with_meta(task_meta:dict, task: str, algorithm, option = {}, model=Non
         else:
             default_option[op_key] = option[op_key]
     option = default_option
+    TORCH_NUM_THREADS = option.get('torch_num_threads', 0)
+    if TORCH_NUM_THREADS>0: torch.set_num_threads(TORCH_NUM_THREADS)
     setup_seed(seed=option['seed'])
     option['task'] = task
     option['algorithm'] = (algorithm.__name__).split('.')[-1]
