@@ -52,7 +52,9 @@ Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 
 Tutorials in Chinese can be found [here](https://www.zhihu.com/column/c_1618319253936984064)
 # News
-[2024.9.20] We present a comprehensive benchmark gallery [here](https://github.com/WwZzz/FLGo-Bench)
+**[2024.9.20]** We present a comprehensive benchmark gallery [here](https://github.com/WwZzz/FLGo-Bench)
+**[2024.8.01]** Improving efficiency by sharing datasets across multiple processes within each task in the shared memory 
+
 # Quick Start with 3 lines :zap:
 ```python
 import flgo
