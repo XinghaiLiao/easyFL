@@ -51,7 +51,8 @@ Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 </center>
 
 Tutorials in Chinese can be found [here](https://www.zhihu.com/column/c_1618319253936984064)
-
+# News
+[2024.9.20] We present a comprehensive benchmark gallery [here](https://github.com/WwZzz/FLGo-Bench)
 # Quick Start with 3 lines :zap:
 ```python
 import flgo
