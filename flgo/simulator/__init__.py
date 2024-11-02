@@ -92,6 +92,7 @@ class ExampleSimulator(BasicSimulator):
         self.client_drop_prob = {cid: dp for cid,dp in zip(self.clients, drop_probs)}
         self.client_time_response = {cid: np.random.randint(5, 1000) for cid in self.clients}
         self.set_variable(list(self.clients.keys()), 'latency', list(self.client_time_response.values()))
+        self.server.tolerance_for_latency = 999999
 
     def update_client_connectivity(self, client_ids):
         self.set_variable(client_ids, 'prob_drop', [self.client_drop_prob[cid] for cid in client_ids])

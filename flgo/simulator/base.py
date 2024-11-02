@@ -95,8 +95,7 @@ class ElemClock:
         """
         if delta_t < 0: raise RuntimeError("Cannot inverse time of simulator.base.clock.")
         if self.simulator is not None:
-            for t in range(delta_t):
-                self.simulator.flush()
+            self.simulator.flush(delta_t)
         self.time += delta_t
 
     def set_time(self, t):
@@ -214,16 +213,17 @@ class BasicSimulator(AbstractSimulator):
     _STATE = ['offline', 'idle', 'selected', 'working', 'dropped']
     _VAR_NAMES = ['prob_available', 'prob_unavailable', 'prob_drop', 'working_amount', 'latency', 'capacity']
     def __init__(self, objects, *args, **kwargs):
-
         self.server = objects[0] if len(objects)>0 else None
         self.random_module = np.random.RandomState(0)
         self.roundwise_fixed_availability = False
         self.availability_latest_round = -1
         self.register_clients(objects[1:] if len(objects)>0 else [])
+        self.flushing_time = 1
 
     def register_clients(self, clients):
         self.clients = {c.id: c for c in clients} if len(clients)>0 else {}
         self.all_clients = list(self.clients.keys())
+        self.client_idxs = {k:i for i,k in enumerate(self.all_clients)}
         self.client_states = {cid:'idle' for cid in self.clients}
         self.variables = {c.id:{
             'prob_available': 1.,
@@ -306,6 +306,25 @@ class BasicSimulator(AbstractSimulator):
         """
         if client_ids is None: return [self.clients[cid] for cid in self.all_clients]
         return [self.clients[cid] for cid in client_ids]
+
+    def idx2id(self, client_idxs:list=None):
+        """
+        Args:
+            client_ids (list): a list of client indices of server
+        Returns:
+            res (list): a list of client personal ids
+        """
+        return [self.all_clients[cidx] for cidx in client_idxs]
+
+    def id2idx(self, client_ids:list=None):
+        """
+        Convert client id to indices in server
+        Args:
+            client_ids (list): a list of clients' personal IDs
+        Returns:
+            res (list): a list of client indices of server
+        """
+        return [self.client_idxs[cid] for cid in client_ids]
 
     @property
     def idle_clients(self):
@@ -394,13 +413,15 @@ class BasicSimulator(AbstractSimulator):
         for k, v in cpt.items():
             setattr(self, k, v)
 
-    def flush(self):
+    def flush(self, t=1):
         """Flush the client state machine as time goes by"""
         # +++++++++++++++++++ availability +++++++++++++++++++++
         # change self.variables[cid]['prob_available'] and self.variables[cid]['prob_unavailable'] for each client `cid`
+        self.flushing_time = t
         self.update_client_availability()
         # change self.variables[cid]['capacity'] for each client
         self.update_client_capacity()
+        self.flushing_time = 1
         # update states for offline & idle clients
         if len(self.idle_clients)==0 or not self.roundwise_fixed_availability or self.server.current_round > self.availability_latest_round:
             self.availability_latest_round = self.server.current_round
@@ -416,7 +437,7 @@ class BasicSimulator(AbstractSimulator):
             self.set_client_state(new_offline_clients, 'offline')
         # update states for dropped clients
         for cid in self.dropped_clients:
-            self.state_counter[cid]['dropped_counter'] -= 1
+            self.state_counter[cid]['dropped_counter'] -= min(t, self.state_counter[cid]['dropped_counter']+1)
             if self.state_counter[cid]['dropped_counter'] < 0:
                 self.state_counter[cid]['dropped_counter'] = 0
                 self.client_states[cid] = 'offline'
@@ -457,22 +478,22 @@ def with_availability(sample):
     ```
     """
     def sample_with_availability(self):
-        available_clients = self.gv.simulator.idle_clients
+        available_idxs = self.gv.simulator.id2idx(self.gv.simulator.idle_clients)
         # ensure that there is at least one client to be available at the current moment
         # while len(available_clients) == 0:
         #     self.gv.clock.step()
         #     available_clients = self.gv.simulator.idle_clients
         # call the original sampling function
-        selected_clients = sample(self)
+        selected_idxs = sample(self)
         # filter the selected but unavailable clients
-        effective_clients = set(selected_clients).intersection(set(available_clients))
+        effective_idxs = set(selected_idxs).intersection(set(available_idxs))
         # return the selected and available clients (e.g. sampling with replacement should be considered here)
-        self._unavailable_selected_clients = [cid for cid in selected_clients if cid not in effective_clients]
+        self._unavailable_selected_clients = [cidx for cidx in selected_idxs if cidx not in effective_idxs]
         if len(self._unavailable_selected_clients)>0:
             self.gv.logger.info('The selected clients {} are not currently available.'.format(self._unavailable_selected_clients))
-        selected_clients = [cid for cid in selected_clients if cid in effective_clients]
-        self.gv.simulator.set_client_state(selected_clients, 'selected')
-        return selected_clients
+        selected_idxs = [cidx for cidx in selected_idxs if cidx in effective_idxs]
+        self.gv.simulator.set_client_state(self.gv.simulator.idx2id(selected_idxs), 'selected')
+        return selected_idxs
     return sample_with_availability
 
 # communicating phase
@@ -493,11 +514,13 @@ def with_dropout(communicate):
     @functools.wraps(communicate)
     def communicate_with_dropout(self, selected_clients, mtype=0, asynchronous=False):
         if len(selected_clients) > 0:
-            self.gv.simulator.update_client_connectivity(selected_clients)
-            probs_drop = self.gv.simulator.get_variable(selected_clients, 'prob_drop')
-            self._dropped_selected_clients = [cid for cid,prob in zip(selected_clients, probs_drop) if self.gv.simulator.random_module.rand() <= prob]
-            self.gv.simulator.set_client_state(self._dropped_selected_clients, 'dropped')
-            return communicate(self, [cid for cid in selected_clients if cid not in self._dropped_selected_clients], mtype, asynchronous)
+            simulator = self.gv.simulator
+            selected_ids = simulator.idx2id(selected_clients)
+            simulator.update_client_connectivity(selected_ids)
+            probs_drop = simulator.get_variable(selected_ids, 'prob_drop')
+            self._dropped_selected_clients = [cidx for cidx, prob in zip(selected_clients, probs_drop) if simulator.random_module.rand() <= prob]
+            simulator.set_client_state(simulator.idx2id(self._dropped_selected_clients), 'dropped')
+            return communicate(self, [cidx for cidx in selected_clients if cidx not in self._dropped_selected_clients], mtype, asynchronous)
         else:
             return communicate(self, selected_clients, mtype, asynchronous)
     return communicate_with_dropout
@@ -518,28 +541,31 @@ def with_latency(communicate_with):
     ```
     """
     @functools.wraps(communicate_with)
-    def delayed_communicate_with(self, target_id, package):
+    def delayed_communicate_with(self, client_id, package):
         # Calculate latency for the target client
         # Set local_movielens_recommendation model size of clients for computation cost estimation
+        simulator = self.gv.simulator
+        target_idx = simulator.id2idx([client_id])[0]
+        # client_id = simulator.idx2id([target_idx])[0]
         if 'model' in package.keys() and isinstance(package['model'], flgo.utils.fmodule.FModule):
             model_size = package['model'].count_parameters(output=False)
         else:
             model_size = 0
-        self.gv.simulator.set_variable(target_id, '__model_size', model_size)
+        simulator.set_variable(client_id, '__model_size', model_size)
         # Set downloading package sizes for clients for downloading cost estimation
-        self.gv.simulator.set_variable(target_id, '__download_package_size',size_of_package(package))
-        res = communicate_with(self, target_id, package)
+        simulator.set_variable(client_id, '__download_package_size',size_of_package(package))
+        res = communicate_with(self, client_id, package)
         if res is None: res = {}
         # Set uploading package sizes for clients for uploading cost estimation
-        self.gv.simulator.set_variable(target_id, '__upload_package_size', size_of_package(res))
+        simulator.set_variable(client_id, '__upload_package_size', size_of_package(res))
         # update latency of the target client according to the communication cost and computation cost
-        self.gv.simulator.update_client_responsiveness([target_id])
+        simulator.update_client_responsiveness([client_id])
         # Record the size of the package that may influence the value of the latency
         # Update the real-time latency of the client response
         # Get the updated latency
-        latency = self.gv.simulator.get_variable(target_id, 'latency')[0]
-        self.clients[target_id]._latency = latency
-        res['__cid'] = target_id
+        latency = simulator.get_variable(client_id, 'latency')[0]
+        self.clients[target_idx]._latency = latency
+        res['__cid'] = target_idx
         # Compute the arrival time
         res['__t'] = self.gv.clock.current_time + latency
         return res
@@ -584,14 +610,17 @@ def with_clock(communicate):
     ```
     """
     def communicate_with_clock(self, selected_clients, mtype=0, asynchronous=False):
-        self.gv.simulator.update_client_completeness(selected_clients)
+        simulator = self.gv.simulator
+        clock = self.gv.clock
+        selected_client_ids = simulator.idx2id(selected_clients)
+        simulator.update_client_completeness(selected_client_ids)
         res = communicate(self, selected_clients, mtype, asynchronous)
         # If all the selected clients are unavailable, directly return the result without waiting.
         # Else if all the available clients have dropped out and not using asynchronous communication,  waiting for `tolerance_for_latency` time units.
         tolerance_for_latency = self.get_tolerance_for_latency()
         if not asynchronous and len(selected_clients)==0:
             if hasattr(self, '_dropped_selected_clients') and len(self._dropped_selected_clients)>0:
-                self.gv.clock.step(tolerance_for_latency)
+                clock.step(tolerance_for_latency)
             return res
         # Convert the unpacked packages to a list of packages of each client.
         pkgs = [{key: vi[id] for key, vi in res.items()} for id in range(len(list(res.values())[0]))] if len(selected_clients)>0 else []
@@ -601,36 +630,36 @@ def with_clock(communicate):
         # Put the packages from selected clients into clock only if when there are effective selected clients
         if len(selected_clients)>0:
             # Set selected clients' states as `working`
-            self.gv.simulator.set_client_state(selected_clients, 'working')
+            simulator.set_client_state(selected_client_ids, 'working')
             for pi in pkgs:
-                self.gv.clock.put(pi, pi.get('__t', 0))
+                clock.put(pi, pi.get('__t', 0))
         # Receiving packages in asynchronous\synchronous way
         # Wait for client packages. If communicating in asynchronous way, the waiting time is 0.
         if asynchronous:
             # Return the currently received packages to the server
-            eff_pkgs = self.gv.clock.get_until(self.gv.clock.current_time)
-            eff_cids = [pkg_i['__cid'] for pkg_i in eff_pkgs]
+            eff_pkgs = clock.get_until(clock.current_time)
+            effective_cidxs = [pkg_i['__cid'] for pkg_i in eff_pkgs]
         else:
             # Wait all the selected clients for no more than `tolerance_for_latency` time units.
             # Check if anyone had dropped out or will be overdue
-            max_latency = max(self.gv.simulator.get_variable(selected_clients, 'latency'))
+            max_latency = max(simulator.get_variable(selected_client_ids, 'latency'))
             any_drop, any_overdue = (hasattr(self, '_dropped_selected_clients') and len(self._dropped_selected_clients) > 0), (max_latency >  tolerance_for_latency)
             # Compute delta of time for the communication.
             delta_t = tolerance_for_latency if any_drop or any_overdue else max_latency
             # Receive packages within due
-            eff_pkgs = self.gv.clock.get_until(self.gv.clock.current_time + delta_t)
-            self.gv.clock.step(int(delta_t))
+            eff_pkgs = clock.get_until(self.gv.clock.current_time + delta_t)
+            clock.step(int(delta_t))
             # Drop the packages of overdue clients and reset their states to `idle`
-            eff_cids = [pkg_i['__cid'] for pkg_i in eff_pkgs]
-            self._overdue_clients = list(set([cid for cid in selected_clients if cid not in eff_cids]))
+            effective_cidxs = [pkg_i['__cid'] for pkg_i in eff_pkgs]
+            self._overdue_clients = list(set([cid for cid in selected_clients if cid not in effective_cidxs]))
             # no additional wait for the synchronous selected clients and preserve the later packages from asynchronous clients
             if len(self._overdue_clients) > 0:
-                self.gv.clock.conditionally_clear(lambda x: x['__cid'] in self._overdue_clients)
-                self.gv.simulator.set_client_state(self._overdue_clients, 'idle')
+                clock.conditionally_clear(lambda x: x['__cid'] in self._overdue_clients)
+                simulator.set_client_state(simulator.idx2id(self._overdue_clients), 'idle')
             # Resort effective packages
             pkg_map = {pkg_i['__cid']: pkg_i for pkg_i in eff_pkgs}
-            eff_pkgs = [pkg_map[cid] for cid in selected_clients if cid in eff_cids]
-        self.gv.simulator.set_client_state(eff_cids, 'offline')
+            eff_pkgs = [pkg_map[cid] for cid in selected_clients if cid in effective_cidxs]
+        simulator.set_client_state(simulator.idx2id(effective_cidxs), 'offline')
         self.received_clients = [pkg_i['__cid'] for pkg_i in eff_pkgs]
         return self.unpack(eff_pkgs)
     return communicate_with_clock
