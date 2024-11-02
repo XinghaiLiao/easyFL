@@ -2372,10 +2372,16 @@ class BasicLogger(Logger):
             self._es_counter = 0
         return False
 
-    def optimal_state(self)->dict:
-        return {
-            'model': self.coordinator.model.state_dict()
-        }
+    # def optimal_state(self)->dict:
+    #     return {
+    #         'model': self.coordinator.model.state_dict()
+    #     }
+
+    def optimal_state(self) -> dict:
+        res = {'model': copy.deepcopy(self.coordinator.model.state_dict())}
+        if hasattr(self, 'clients') and len(self.clients)>0 and hasattr(self.clients[0], 'model') and self.clients[0].model is not None:
+            res.update({'local_models': [copy.deepcopy(c.model.state_dict()) if c.model is not None else {} for c in self.clients]})
+        return res
 
     def trace_optimal_state(self):
         if self._es_key not in self.output: return False
