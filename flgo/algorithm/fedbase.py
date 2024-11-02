@@ -751,6 +751,25 @@ class BasicServer(BasicParty):
         self.selected_clients = []
         self.dropped_clients = []
 
+    def reset_clients(self, clients:list):
+        """
+        Reset clients and update related settings (e.g. self, logger, and simulator)
+
+        Args:
+            clients (list): a list of objects
+        """
+        if self.gv.simulator is not None:
+            self.gv.simulator.register_clients(clients)
+            self.gv.simulator.initialize()
+        self.register_clients(clients)
+        objects = [self] + clients
+        for ob in objects:
+            ob.initialize()
+        self.gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], objects=objects)
+        if self.gv.logger.scene == 'horizontal': self.gv.logger.register_variable(server=objects[0], clients=objects[1:])
+        self.gv.logger.initialize()
+        return
+
     def _save_checkpoint(self):
         checkpoint = self.option.get('save_checkpoint', '')
         if checkpoint!='':

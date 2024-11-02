@@ -214,18 +214,17 @@ class BasicSimulator(AbstractSimulator):
     _STATE = ['offline', 'idle', 'selected', 'working', 'dropped']
     _VAR_NAMES = ['prob_available', 'prob_unavailable', 'prob_drop', 'working_amount', 'latency', 'capacity']
     def __init__(self, objects, *args, **kwargs):
-        if len(objects)>0:
-            self.server = objects[0]
-            self.clients = {c.id:c for c in objects[1:]}
-        else:
-            self.server = None
-            self.clients = {}
-        self.all_clients = list(self.clients.keys())
+
+        self.server = objects[0] if len(objects)>0 else None
         self.random_module = np.random.RandomState(0)
-        # client states and the variables
-        self.client_states = {cid:'idle' for cid in self.clients}
         self.roundwise_fixed_availability = False
         self.availability_latest_round = -1
+        self.register_clients(objects[1:] if len(objects)>0 else [])
+
+    def register_clients(self, clients):
+        self.clients = {c.id: c for c in clients} if len(clients)>0 else {}
+        self.all_clients = list(self.clients.keys())
+        self.client_states = {cid:'idle' for cid in self.clients}
         self.variables = {c.id:{
             'prob_available': 1.,
             'prob_unavailable': 0.,
