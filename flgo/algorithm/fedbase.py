@@ -228,6 +228,17 @@ class BasicParty:
             setattr(self, parties_name, tmp)
         self._object_map.update({p.id:p for p in parties if p.id is not None})
 
+    def clear_objects(self, parties_name='parties'):
+        r"""
+        Clear self's attribute party_names and delete their corresponding maps'
+        """
+        if not hasattr(self, parties_name): return
+        tmp = getattr(self, parties_name)
+        if tmp is not None:
+            delattr(self, parties_name)
+        self._object_map.clear()
+        return tmp
+
     def communicate_with(self, target_id, package={}):
         r"""
         Send the package to target object according to its id, and receive the response from it
@@ -751,6 +762,18 @@ class BasicServer(BasicParty):
         self.selected_clients = []
         self.dropped_clients = []
 
+    def clear_clients(self):
+        """
+        Clear clients and debind each client and the server
+        """
+        clients = self.clear_objects('clients')
+        self.num_clients = 0
+        self.clients_per_round = 0
+        for c in clients:
+            c.clear_objects('server_list')
+            if hasattr(c, 'server'): c.server = None
+        return
+
     def reset_clients(self, clients:list):
         """
         Reset clients and update related settings (e.g. self, logger, and simulator)
@@ -758,13 +781,13 @@ class BasicServer(BasicParty):
         Args:
             clients (list): a list of objects
         """
+        self.clear_clients()
         if self.gv.simulator is not None:
             self.gv.simulator.register_clients(clients)
             self.gv.simulator.initialize()
         self.register_clients(clients)
         objects = [self] + clients
-        for ob in objects:
-            ob.initialize()
+        for ob in objects: ob.initialize()
         self.gv.logger.register_variable(coordinator=objects[0], participants=objects[1:], objects=objects)
         if self.gv.logger.scene == 'horizontal': self.gv.logger.register_variable(server=objects[0], clients=objects[1:])
         self.gv.logger.initialize()
