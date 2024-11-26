@@ -32,7 +32,7 @@ try:
     from collections import Iterable
 except ImportError:
     from collections.abc import Iterable
-import fcntl
+import tempfile
 import numpy as np
 import torch
 try:
@@ -2121,23 +2121,23 @@ def set_data_root(data_root:str=None):
             raise TypeError('data_root must be a dir')
         crt_root = os.path.abspath(data_root).strip()
         root_name = '"'+crt_root+'"'
-
-    with open(file_path, 'r', encoding=sys.getfilesystemencoding()) as inf:
-        fcntl.flock(inf, fcntl.LOCK_SH)  # 加锁
-        lines = inf.readlines()
+    with tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(file_path), prefix='tmp_', suffix='.txt') as tmpfile:
+        with open(file_path, 'r', encoding='utf-8') as inf:
+            lines = inf.readlines()
         idx = -1
-        for i,line in enumerate(lines):
-            if line.find('data_root')>-1:
+        for i, line in enumerate(lines):
+            if 'data_root' in line:
                 idx = i
                 break
-        if idx>0:
-            lines[idx] = "data_root = "+ root_name
-        fcntl.flock(inf, fcntl.LOCK_UN)  # 解锁
-
-    with open(file_path, 'w', encoding=sys.getfilesystemencoding()) as outf:
-        fcntl.flock(outf, fcntl.LOCK_EX)  # 加锁
-        outf.writelines(lines)
-        fcntl.flock(outf, fcntl.LOCK_UN)  # 解锁
+        if idx != -1:
+            lines[idx] = f"data_root = {root_name}\n"
+        tmpfile.write(''.join(lines).encode('utf-8'))
+        tmpfile.flush()
+    try:
+        os.replace(tmpfile.name, file_path)
+    except AttributeError:
+        import shutil
+        shutil.move(tmpfile.name, file_path)
     flgo.benchmark.data_root = crt_root
     print('Data root directory has successfully been changed to {}'.format(crt_root))
     return
