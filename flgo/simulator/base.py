@@ -223,7 +223,7 @@ class BasicSimulator(AbstractSimulator):
     def register_clients(self, clients):
         self.clients = {c.id: c for c in clients} if len(clients)>0 else {}
         self.all_clients = list(self.clients.keys())
-        self.client_idxs = {k:i for i,k in enumerate(self.all_clients)}
+        self._accessible_client_idxs = {k:i for i,k in enumerate(self.all_clients)}
         self.client_states = {cid:'idle' for cid in self.clients}
         self.variables = {c.id:{
             'prob_available': 1.,
@@ -324,7 +324,7 @@ class BasicSimulator(AbstractSimulator):
         Returns:
             res (list): a list of client indices of server
         """
-        return [self.client_idxs[cid] for cid in client_ids]
+        return [self._accessible_client_idxs[cid] for cid in client_ids]
 
     @property
     def idle_clients(self):

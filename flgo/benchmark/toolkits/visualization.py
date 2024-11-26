@@ -5,6 +5,9 @@ import collections
 import numpy as np
 import os
 
+from numba.cuda import local
+
+
 def visualize_by_class(generator, partitioner, task_path:str):
     r"""
     Visualize the partitioned classification dataset and save the figure
@@ -107,6 +110,57 @@ def visualize_by_community(generator, partitioner, task_path:str):
     plt.savefig(os.path.join(task_path, 'res.png'))
     plt.show()
     return
+
+def visualize_hier_by_class(generator, partitioner, task_path:str):
+    r"""
+    Visualize the partitioned classification dataset and save the figure
+
+    Args:
+        generator (flgo.benchmark.toolkits.BasicTaskGenerator): task generator
+        partitioner (flgo.benchmark.toolkits.partition.BasicPartitioner): partitioner
+        task_path (str): the path storing the figure
+    """
+    import torch.utils.data
+    dataloader = torch.utils.data.DataLoader(generator.train_data, batch_size=50, shuffle=False)
+    all_labels = []
+    for _, batch in enumerate(dataloader):
+        all_labels.append(batch[-1])
+    all_labels = torch.cat(all_labels).tolist()
+    # all_labels = [d[-1] for d in generator.train_data]
+    num_classes = len(set(all_labels))
+    colors = [key for key in matplotlib.colors.CSS4_COLORS.keys()]
+    if len(colors)<num_classes: colors = list(matplotlib.colors._colors_full_map.keys())
+    random.shuffle(colors)
+    client_height = 1
+    local_datas = generator.local_datas
+    num_edge_servers = len(local_datas)
+    cols = 5
+    rows = num_edge_servers//cols
+    if num_edge_servers%cols!=0: rows += 1
+    if rows==1: cols = num_edge_servers
+    fig = plt.figure(figsize=(3*cols, 3*rows))
+    for i in range(num_edge_servers):
+        plt.subplot(rows, cols, i+1)
+        edge_datas = local_datas[i]
+        data_columns = [len(cidx) for cidx in edge_datas]
+        row_map = {k: i for k, i in zip(np.argsort(data_columns), [_ for _ in range(len(edge_datas))])}
+        for cid, cidxs in enumerate(edge_datas):
+            labels = [int(all_labels[did]) for did in cidxs]
+            lb_counter = collections.Counter(labels)
+            offset = 0
+            y_bottom = row_map[cid] - client_height / 2.0
+            y_top = row_map[cid] + client_height / 2.0
+            for lbi in range(num_classes):
+                plt.fill_between([offset, offset + lb_counter[lbi]], y_bottom, y_top, facecolor=colors[lbi%len(colors)])
+                offset += lb_counter[lbi]
+        plt.title(f'edge_server {i}')
+        plt.xlim(0, max(data_columns))
+        plt.ylim(-0.5, len(edge_datas)- 0.5)
+        plt.ylabel('Client ID')
+        plt.xlabel('Number of Samples')
+    plt.tight_layout()
+    plt.savefig(os.path.join(task_path, 'res.png'))
+    plt.show()
 
 import numpy as np
 import matplotlib.pyplot as plt

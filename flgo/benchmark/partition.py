@@ -69,7 +69,7 @@ class BasicPartitioner(AbstractPartitioner):
             crt_data_size = sum(samples_per_client)
             total_delta = np.abs(crt_data_size-datasize)
             thresold = max(int(total_delta/10), 1)
-            delta = min(int(0.1 * thresold), 10)
+            delta = max(min(int(0.1 * thresold), 10), 1)
             # force current data size to match the total data size
             while crt_data_size != datasize:
                 if crt_data_size - datasize >= thresold:
@@ -494,9 +494,9 @@ class NodeLouvainPartitioner(BasicPartitioner):
         return local_nodes
 
 class BasicHierPartitioner(BasicPartitioner):
-    def __init__(self, Partitioner1=IIDPartitioner, pargs1:dict ={'num_clients':5}, Partitioner2=IIDPartitioner, pargs2:dict = {'num_clients':20}):
-        self.p1 = Partitioner1(**pargs1)
-        self.p2 = Partitioner2(**pargs2)
+    def __init__(self, partitioner_edge_server, partitioner_edge_client):
+        self.p1 = partitioner_edge_server
+        self.p2 = partitioner_edge_client
 
     def __call__(self, data):
         edge_servers_data = self.p1(data)
