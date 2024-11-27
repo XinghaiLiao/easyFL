@@ -93,7 +93,27 @@ class TrainingDataReducer(BasicDecorator):
     def __str__(self):
         return f"TrainingDataReducer{self.preserve_ratio}"
 
-class SequencialDecorator(BasicDecorator):
+class TrainingDataTruncation(BasicDecorator):
+    """
+    Truncating training data at each client side
+
+    Args:
+        max_size (int): the maximum size of training data
+    """
+    def __init__(self, max_size: int=1000):
+        self.max_size = max_size
+
+    def __call__(self, runner, *args, **kwargs):
+        for c in runner.clients:
+            if len(c.train_data)>self.max_size:
+                new_train_data = tud.Subset(c.train_data, np.random.choice(list(range(len(c.train_data))), size=self.max_size, replace=False).tolist())
+                c.set_data(new_train_data, 'train')
+        self.register_runner(runner)
+
+    def __str__(self):
+        return f"TrainingDataTruncation{self.max_size}"
+
+class SequentialDecorator(BasicDecorator):
     """
     Combine several decorators into a single decorator
 
