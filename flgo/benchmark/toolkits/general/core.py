@@ -34,6 +34,7 @@ class TaskGenerator(fbb.FromDatasetGenerator):
     def __init__(self):
         super(TaskGenerator, self).__init__(benchmark=os.path.split(os.path.dirname(__file__))[-1],
                                             train_data=train_data, val_data=val_data, test_data=test_data)
+        self.scene = 'horizontal'
 
 class TaskPipe(fbb.FromDatasetPipe):
     TaskDataset = torch.utils.data.Subset
