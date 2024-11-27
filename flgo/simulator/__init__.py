@@ -48,6 +48,7 @@ from flgo.simulator.phone_simulator import Simulator as PhoneSimulator
 from flgo.simulator.base import BasicSimulator
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 class ResponsivenessExampleSimulator(BasicSimulator):
     def initialize(self):
@@ -118,4 +119,96 @@ class ExampleSimulator(BasicSimulator):
             self._my_working_amount = {cid:max(int(r*self.clients[cid].num_steps),1) for  cid,r in zip(self.clients, rs)}
         working_amount = [self._my_working_amount[cid] for cid in client_ids]
         self.set_variable(client_ids, 'working_amount', working_amount)
+
+def visualize_availability(data, sort=True, title=''):
+    """
+    Visualize availability matrix
+
+    Args:
+        data (numpy.ndarray): a 2d-array where each row corresponds to round-wise availability of all the clients and each column refers to the availability of one client across rounds.
+    """
+    if not isinstance(data, np.ndarray):data = np.array(data)
+    data = data.T
+    if sort:
+        row_sums = np.sum(data, axis=1)
+        sorted_indices = np.argsort(row_sums)
+        data = data[sorted_indices]
+    plt.imshow(data, cmap='Greens')
+    tit = 'Availability'
+    if title!='': tit = tit + '-' + title
+    plt.title(tit)
+    plt.xlabel('Round')
+    plt.ylabel('Client Index')
+    plt.grid(False)
+    plt.gca().invert_yaxis()
+    data2 = np.sum(data, axis=0)
+    plt.plot(list(range(len(data2))), data2, 'r', label='num')
+    bars = np.sum(data, axis=1)
+    plt.barh(list(range(len(bars))), bars, alpha=0.25)
+    plt.tight_layout()
+    plt.show()
+
+def visualize_capacity(data, sort=True, title=''):
+    if not isinstance(data, np.ndarray):data = np.array(data)
+    data = data.T
+    if sort:
+        row_sums = np.sum(data, axis=1)
+        sorted_indices = np.argsort(row_sums)
+        data = data[sorted_indices]
+
+    mean_cap = np.mean(data, axis=1)
+    min_cap = np.min(data, axis=1)
+    max_cap = np.max(data, axis=1)
+    plt.bar(list(range(len(mean_cap))), mean_cap, color='gray')
+    plt.plot(list(range(len(mean_cap))), mean_cap, linewidth=2, color='black')
+    plt.scatter(list(range(len(min_cap))), min_cap, marker='o', color='green')
+    plt.scatter(list(range(len(min_cap))), max_cap, marker='o', color='red')
+    plt.xlabel("Client ID")
+    plt.ylabel("Capacity Ratio")
+    tit = "Device Capacity"
+    if title!='':tit=tit + '-' + title
+    plt.title(tit)
+    plt.show()
+
+
+def visualize_simulator(runner, name='all', sort=True):
+    runner.proportion = 1.0
+    runner.sample_option = 'full'
+    runner.eval_interval = -1
+    completeness = []
+    latencies = []
+    avails = []
+    drops = []
+    caps = []
+
+    def pack(self, client_id, mtype=0):
+        return {}
+
+    def iterate(self):
+        caps.append([c._capacity for c in self.clients])
+        avails.append([int(c.is_idle()) for c in self.clients])
+        self.selected_clients = list(range(self.num_clients))
+        res = self.communicate(self.selected_clients)
+        drops.append([1 if cid in self._dropped_selected_clients else 0 for cid in self.selected_clients])
+        completeness.append([1.0*c._working_amount/c.num_steps for c in self.clients])
+        latencies.append([c._latency for c in self.clients])
+        return
+
+    def reply(self, svr_pkg):
+        return {}
+
+    runner.__class__.pack = pack
+    runner.__class__.iterate = iterate
+    for c in runner.clients:
+        c.__class__.reply = reply
+        c.actions = {0: c.reply}
+    runner.run()
+    visualize_availability(avails, sort, f"{runner.gv.simulator.__class__.__name__}-R{runner.num_rounds}")
+    visualize_capacity(caps, sort, f"{runner.gv.simulator.__class__.__name__}-R{runner.num_rounds}")
+    print('ok')
+
+
+
+
+
 

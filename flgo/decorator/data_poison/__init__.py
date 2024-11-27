@@ -1,8 +1,8 @@
 import numpy as np
 import torch.utils.data as tud
-from .. import BasicDecorator
+import flgo.decorator as fd
 
-class LabelFlipper(BasicDecorator):
+class LabelFlipper(fd.BasicDecorator):
     """
     Flip labels in datasets.
 

@@ -1,7 +1,7 @@
 import torch
 import torch.utils.data as tud
-from .. import BasicDecorator
-class GaussianNoiser(BasicDecorator):
+import flgo.decorator as fd
+class GaussianNoiser(fd.BasicDecorator):
     """
     This noiser is a non-official implementation of Gaussian noise in 'Federated Learning on Non-IID Data Silos: An Experimental Study.'.
     The official implementation is at https://github.com/Xtra-Computing/NIID-Bench.
@@ -49,7 +49,7 @@ class GaussianNoiser(BasicDecorator):
     def __str__(self):
         return f"Gaussian-0-{self.sigma}*iN"
 
-class HardGaussianNoiser(BasicDecorator):
+class HardGaussianNoiser(fd.BasicDecorator):
     """
     This noiser adds noise to features with different means and standard deviations across clients.
 
