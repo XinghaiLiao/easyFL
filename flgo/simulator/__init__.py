@@ -270,7 +270,7 @@ def visualize_stability(data, sort=True, title="", show=True, save=False):
     if show: plt.show()
     return tit
 
-def visualize_simulator(runner, sort=True, together=True, save=True, select=[]):
+def visualize_simulator(runner, sort=False, together=True, save=True, select=[]):
     """
     Visualize a simulator.
 
