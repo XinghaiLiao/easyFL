@@ -1,3 +1,12 @@
+"""
+This module is designed for creating challenging federated scenarios like noisy features, poisoned data, and truncated dataset based on existing tasks.
+Each decorator can be applied to an existing runner by directly invoking the decorator and passing the runner as an argument. For example,
+>>> runner = flgo.init(task, fedavg, option) # create runner
+>>> import flgo.decorator as fd
+>>> decorator = fd.TrainingDataReducer(0.8)
+>>> decorator(runner)
+>>> runner.run()
+"""
 import os.path
 import shutil
 import numpy as np
@@ -21,7 +30,6 @@ class BasicDecorator:
         runner.option['task'] = runner.option['task'] + str(self)
         runner.gv.logger.option['task'] = new_task
         runner.gv.logger.task_path = new_task
-
 
 class ClientRemover(BasicDecorator):
     """
