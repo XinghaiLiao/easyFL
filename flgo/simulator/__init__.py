@@ -325,7 +325,7 @@ def visualize_simulator(runner, sort=True, together=True, save=True, select=[]):
         plt.close('all')
         image_files = [f"{t}.png" for t in ts]
         import matplotlib.image as mpimg
-        fig, axs = plt.subplots(1, 5, figsize=(20, 4))
+        fig, axs = plt.subplots(1, len(select), figsize=(4*len(select), 4))
         for ax, image_file in zip(axs, image_files):
             img = mpimg.imread(image_file)  # 读取图像
             ax.imshow(img)  # 显示图像
