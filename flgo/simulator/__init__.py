@@ -283,7 +283,7 @@ def visualize_stability(data, sort=True, title="", show=True, save=False):
     if show: plt.show()
     return tit
 
-def visualize_simulator(runner, sort=False, together=True, save=True, select=[]):
+def visualize_simulator(runner, sort=False, together=True, save=True, select=[], title=""):
     """
     Visualize a simulator.
 
@@ -343,12 +343,13 @@ def visualize_simulator(runner, sort=False, together=True, save=True, select=[])
             img = mpimg.imread(image_file)  # 读取图像
             ax.imshow(img)  # 显示图像
             ax.axis('off')  # 关闭坐标轴
-        plt.suptitle(n)
+        plt.suptitle(title if title!='' else n)
         plt.tight_layout()
         if save: plt.savefig(f'{n}.png', dpi=300, bbox_inches='tight')
         plt.show()
         for img in image_files: os.remove(img)
     else:
+        n = title if title!='' else n
         if 0 in select: visualize_availability(avails, sort, n, save=save)
         if 1 in select: visualize_latency(latencies, sort, n, save=save)
         if 2 in select: visualize_completeness(completeness, sort, n, save=save)
