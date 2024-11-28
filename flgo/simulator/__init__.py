@@ -215,12 +215,15 @@ def visualize_latency(data, sort=True, title='', show=True, save=False):
     ax1.set_ylabel('Num of Client', color='blue')
     ax1.tick_params(axis='y', labelcolor='blue')
     bin_centers = 0.5 * (bins[1:] + bins[:-1])  # 计算每个bin的中心
-    from scipy.interpolate import make_interp_spline
-    x_smooth = np.linspace(bin_centers.min(), bin_centers.max(), 300)  # 更高分辨率的 x 数据
-    spline = make_interp_spline(bin_centers, hist_values, k=2)  # 使用三次样条插值
-    y_smooth = spline(x_smooth)
-    ax1.plot(x_smooth, y_smooth, color='blue', linestyle='-', linewidth=2)
-    ax1.scatter(bin_centers, hist_values, color='blue', marker='o')
+    if bin_centers.size>2:
+        from scipy.interpolate import make_interp_spline
+        x_smooth = np.linspace(bin_centers.min(), bin_centers.max(), 300)  # 更高分辨率的 x 数据
+        spline = make_interp_spline(bin_centers, hist_values, k=2)  # 使用三次样条插值
+        y_smooth = spline(x_smooth)
+        ax1.plot(x_smooth, y_smooth, color='blue', linestyle='-', linewidth=2)
+        ax1.scatter(bin_centers, hist_values, color='blue', marker='o')
+    else:
+        ax1.scatter(bin_centers, hist_values, color='blue', marker='o')
     tit = "Responsiveness"
     if title!='':tit=tit + '-' + title
     plt.title(tit)
