@@ -43,6 +43,8 @@ APIs to allow customized system heterogeneity simulation.
 
 We also provide some preset Simulator like flgo.simulator.DefaultSimulator and flgo.simulator.
 """
+import os
+
 from flgo.simulator.default_simulator import Simulator as DefaultSimulator
 from flgo.simulator.phone_simulator import Simulator as PhoneSimulator
 from flgo.simulator.base import BasicSimulator
@@ -120,7 +122,7 @@ class ExampleSimulator(BasicSimulator):
         working_amount = [self._my_working_amount[cid] for cid in client_ids]
         self.set_variable(client_ids, 'working_amount', working_amount)
 
-def visualize_availability(data, sort=True, title=''):
+def visualize_availability(data, sort=True, title='', show=True, save=False):
     """
     Visualize availability matrix
 
@@ -133,45 +135,152 @@ def visualize_availability(data, sort=True, title=''):
         row_sums = np.sum(data, axis=1)
         sorted_indices = np.argsort(row_sums)
         data = data[sorted_indices]
-    plt.imshow(data, cmap='Greens')
-    tit = 'Availability'
-    if title!='': tit = tit + '-' + title
-    plt.title(tit)
-    plt.xlabel('Round')
-    plt.ylabel('Client Index')
-    plt.grid(False)
-    plt.gca().invert_yaxis()
-    data2 = np.sum(data, axis=0)
-    plt.plot(list(range(len(data2))), data2, 'r', label='num')
+    fig, ax1 = plt.subplots()
+    ax1.imshow(data, cmap='Greens')
     bars = np.sum(data, axis=1)
-    plt.barh(list(range(len(bars))), bars, alpha=0.25)
+    ax1.barh(list(range(len(bars))), bars, alpha=0.25)
+    ax1.set_xlabel('Round')
+    ax1.set_ylabel('Client ID')
+    data2 = np.sum(data, axis=0)
+    ax1.plot(list(range(len(data2))), data2, 'r', label='num')
+    tit = 'Client Availability'
+    if title!='': tit = tit + '-' + title
+    ax1.invert_yaxis()
+    plt.title(tit)
+    plt.grid(False)
     plt.tight_layout()
-    plt.show()
+    if save: plt.savefig(f'{tit}.png', dpi=300, bbox_inches='tight')
+    if show: plt.show()
+    return tit
 
-def visualize_capacity(data, sort=True, title=''):
+def visualize_capacity(data, sort=True, title='', show=True, save=False):
     if not isinstance(data, np.ndarray):data = np.array(data)
     data = data.T
     if sort:
         row_sums = np.sum(data, axis=1)
         sorted_indices = np.argsort(row_sums)
         data = data[sorted_indices]
-
     mean_cap = np.mean(data, axis=1)
     min_cap = np.min(data, axis=1)
     max_cap = np.max(data, axis=1)
+    plt.figure()
     plt.bar(list(range(len(mean_cap))), mean_cap, color='gray')
     plt.plot(list(range(len(mean_cap))), mean_cap, linewidth=2, color='black')
-    plt.scatter(list(range(len(min_cap))), min_cap, marker='o', color='green')
-    plt.scatter(list(range(len(min_cap))), max_cap, marker='o', color='red')
+    plt.scatter(list(range(len(min_cap))), min_cap, s=6, marker='o', color='green')
+    plt.scatter(list(range(len(min_cap))), max_cap, s=6, marker='o', color='red')
     plt.xlabel("Client ID")
     plt.ylabel("Capacity Ratio")
     tit = "Device Capacity"
     if title!='':tit=tit + '-' + title
     plt.title(tit)
-    plt.show()
+    plt.tight_layout()
+    if save: plt.savefig(f'{tit}.png', dpi=300, bbox_inches='tight')
+    if show: plt.show()
+    return tit
 
+def visualize_latency(data, sort=True, title='', show=True, save=False):
+    if not isinstance(data, np.ndarray):data = np.array(data)
+    if sort:
+        h = data.T
+        rows = np.mean(h, axis=1)
+        sorted_indices = np.argsort(rows)
+        h = h[sorted_indices]
+        data = h.T
+    means = np.mean(data, axis=0)
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    ax2.barh(np.arange(len(means)), means, color='red', alpha=0.2)
+    ax2.set_ylabel('Clients', color='red')
+    ax2.tick_params(axis='y', labelcolor='red')
+    full_max = np.max(data, axis=1).mean()
+    ax2.scatter(full_max, len(means), color='red', marker='*', label='Full Par.')
+    rounds = data.shape[0]
+    colors = ['pink', 'yellow', 'green', 'purple']
+    ps = [0.5,0.2, 0.1, 0.01, ]
+    for p,c in zip(ps, colors):
+        ds = []
+        for k in range(20):
+            d = np.array([np.random.choice(data[i], size=max(int(data.shape[1] * p), 1), replace=False).tolist() for i in range(rounds)]).max(axis=1).mean()
+            ds.append(d)
+        d = np.array(ds).mean()
+        ax2.scatter(d, len(means)*p, color=c, marker='*', label=f'{int(p*100)}% Par.')
+    hist_values, bins, patches = ax1.hist(means, bins='auto',edgecolor='none', color='skyblue')
+    ax1.set_xlabel('Latency (virtual time unit)')
+    ax1.set_ylabel('Num of Client', color='blue')
+    ax1.tick_params(axis='y', labelcolor='blue')
+    bin_centers = 0.5 * (bins[1:] + bins[:-1])  # 计算每个bin的中心
+    from scipy.interpolate import make_interp_spline
+    x_smooth = np.linspace(bin_centers.min(), bin_centers.max(), 300)  # 更高分辨率的 x 数据
+    spline = make_interp_spline(bin_centers, hist_values, k=2)  # 使用三次样条插值
+    y_smooth = spline(x_smooth)
+    ax1.plot(x_smooth, y_smooth, color='blue', linestyle='-', linewidth=2)
+    ax1.scatter(bin_centers, hist_values, color='blue', marker='o')
+    tit = "Responsiveness"
+    if title!='':tit=tit + '-' + title
+    plt.title(tit)
+    plt.legend(loc='upper left')
+    plt.tight_layout()
+    if save: plt.savefig(f'{tit}.png', dpi=300, bbox_inches='tight')
+    if show: plt.show()
+    return tit
 
-def visualize_simulator(runner, name='all', sort=True):
+def visualize_completeness(data, sort=True, title="", show=True, save=False):
+    if not isinstance(data, np.ndarray):data = np.array(data).T
+    if sort:
+        rows = np.mean(data, axis=1)
+        sorted_indices = np.argsort(rows)
+        data = data[sorted_indices]
+    plt.figure()
+    plt.imshow(data, cmap='Reds', interpolation='nearest')
+    plt.colorbar(label='Completeness Degree',  fraction=0.046)
+    tit = "Training Completeness"
+    if title!='':tit=tit + '-' + title
+    plt.title(tit)
+    plt.gca().invert_yaxis()
+    plt.ylabel('Client ID')
+    plt.xlabel('Rounds')
+    plt.tight_layout()
+    if save: plt.savefig(f'{tit}.png', dpi=300, bbox_inches='tight')
+    if show: plt.show()
+    return tit
+
+def visualize_stability(data, sort=True, title="", show=True, save=False):
+    if not isinstance(data, np.ndarray): data = np.array(data).T
+    if sort:
+        rows = np.sum(data[:,0,:], axis=1)
+        sorted_indices = np.argsort(rows)
+        data = data[sorted_indices]
+    dropped = data[:,0,:]
+    probs = data[:,1,:]
+    fig, ax1 = plt.subplots()
+    ax1.set_ylabel('P(Dropping)', color='blue')
+    ax1.set_xlabel('Client ID')
+    ax1.boxplot(probs.T)
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('Actual Dropping Times', color='orange')
+    dropped = dropped.sum(axis=1)
+    ax2.bar(list(range(len(dropped))), dropped, color='orange', alpha=0.2)
+    tit = "Connection Stability"
+    if title!='':tit=tit + '-' + title
+    plt.title(tit)
+    plt.xticks([])
+    plt.tight_layout()
+    if save: plt.savefig(f'{tit}.png', dpi=300, bbox_inches='tight')
+    if show: plt.show()
+    return tit
+
+def visualize_simulator(runner, sort=True, together=True, save=True, select=[]):
+    """
+    Visualize a simulator.
+
+    Args:
+        runner (Any): the runner generated by flgo.init
+        sort (bool): reasonably sorting clients in each system heterogeneity figure
+        together (bool): plot all the figures together in one figure
+        save (bool): save the figure to disk
+        select (list): select which system heterogeneity to be visualized. Default is selecting all. [0,1,2,3,4] corresponds to [availability, responsiveness, completeness, connectivity,capacity] respectively.
+    """
     runner.proportion = 1.0
     runner.sample_option = 'full'
     runner.eval_interval = -1
@@ -180,7 +289,7 @@ def visualize_simulator(runner, name='all', sort=True):
     avails = []
     drops = []
     caps = []
-
+    if select==[]: select=list(range(5))
     def pack(self, client_id, mtype=0):
         return {}
 
@@ -189,7 +298,9 @@ def visualize_simulator(runner, name='all', sort=True):
         avails.append([int(c.is_idle()) for c in self.clients])
         self.selected_clients = list(range(self.num_clients))
         res = self.communicate(self.selected_clients)
-        drops.append([1 if cid in self._dropped_selected_clients else 0 for cid in self.selected_clients])
+        dropped = [1. if cid in self._dropped_selected_clients else 0. for cid in self.selected_clients]
+        pdrop = self.gv.simulator.get_variable(self.gv.simulator.idx2id(self.selected_clients), 'prob_drop')
+        drops.append([dropped, pdrop])
         completeness.append([1.0*c._working_amount/c.num_steps for c in self.clients])
         latencies.append([c._latency for c in self.clients])
         return
@@ -203,9 +314,34 @@ def visualize_simulator(runner, name='all', sort=True):
         c.__class__.reply = reply
         c.actions = {0: c.reply}
     runner.run()
-    visualize_availability(avails, sort, f"{runner.gv.simulator.__class__.__name__}-R{runner.num_rounds}")
-    visualize_capacity(caps, sort, f"{runner.gv.simulator.__class__.__name__}-R{runner.num_rounds}")
-    print('ok')
+    n = f"{runner.gv.simulator.__class__.__name__}-R{runner.num_rounds}"
+    if together:
+        ts = []
+        if 0 in select: ts.append(visualize_availability(avails, sort, show=False, save=True))
+        if 1 in select: ts.append(visualize_latency(latencies, sort, show=False, save=True))
+        if 2 in select: ts.append(visualize_completeness(completeness, sort, show=False, save=True))
+        if 3 in select: ts.append(visualize_stability(drops, sort, show=False, save=True))
+        if 4 in select: ts.append(visualize_capacity(caps, sort, show=False, save=True))
+        plt.close('all')
+        image_files = [f"{t}.png" for t in ts]
+        import matplotlib.image as mpimg
+        fig, axs = plt.subplots(1, 5, figsize=(20, 4))
+        for ax, image_file in zip(axs, image_files):
+            img = mpimg.imread(image_file)  # 读取图像
+            ax.imshow(img)  # 显示图像
+            ax.axis('off')  # 关闭坐标轴
+        plt.suptitle(n)
+        plt.tight_layout()
+        if save: plt.savefig(f'{n}.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        for img in image_files: os.remove(img)
+    else:
+        if 0 in select: visualize_availability(avails, sort, n, save=save)
+        if 1 in select: visualize_latency(latencies, sort, n, save=save)
+        if 2 in select: visualize_completeness(completeness, sort, n, save=save)
+        if 3 in select: visualize_stability(drops, sort, n, save=save)
+        if 4 in select: visualize_capacity(caps, sort, n, save=save)
+
 
 
 
