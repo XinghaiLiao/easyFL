@@ -192,18 +192,24 @@ def visualize_latency(data, sort=True, title='', show=True, save=False):
     ax2.barh(np.arange(len(means)), means, color='red', alpha=0.2)
     ax2.set_ylabel('Clients', color='red')
     ax2.tick_params(axis='y', labelcolor='red')
-    full_max = np.max(data, axis=1).mean()
-    ax2.scatter(full_max, len(means), color='red', marker='*', label='Full Par.')
+    # ax2.scatter(full_max, len(means), color='red', s=100, marker='*', label='Full Par.')
     rounds = data.shape[0]
-    colors = ['pink', 'yellow', 'green', 'purple']
-    ps = [0.5,0.2, 0.1, 0.01, ]
+    colors = ['red', 'pink', 'yellow', 'green', 'purple']
+    ps = [1.0, 0.5,0.2, 0.1, 0.01, ]
+    all_d = []
+    all_n = []
     for p,c in zip(ps, colors):
         ds = []
         for k in range(20):
             d = np.array([np.random.choice(data[i], size=max(int(data.shape[1] * p), 1), replace=False).tolist() for i in range(rounds)]).max(axis=1).mean()
             ds.append(d)
         d = np.array(ds).mean()
-        ax2.scatter(d, len(means)*p, color=c, marker='*', label=f'{int(p*100)}% Par.')
+        all_d.append(d)
+        all_n.append(len(means)*p)
+        # ax2.scatter(d, len(means)*p, color=c, s=100, marker='*', label=f'{int(p*100)}% Par.')
+    ax2.plot(all_d, all_n, '--', color='black')
+    for d,n,c,p in zip(all_d, all_n, colors,ps):
+        ax2.scatter(d, n, color=c, s=100, marker='*', label=f'{int(p*100)}% Par.')
     hist_values, bins, patches = ax1.hist(means, bins='auto',edgecolor='none', color='skyblue')
     ax1.set_xlabel('Latency (virtual time unit)')
     ax1.set_ylabel('Num of Client', color='blue')
@@ -230,9 +236,9 @@ def visualize_completeness(data, sort=True, title="", show=True, save=False):
         rows = np.mean(data, axis=1)
         sorted_indices = np.argsort(rows)
         data = data[sorted_indices]
-    plt.figure()
-    plt.imshow(data, cmap='Reds', interpolation='nearest')
-    plt.colorbar(label='Completeness Degree',  fraction=0.046)
+    fig, ax = plt.subplots()
+    cax = ax.imshow(data, cmap='Reds', interpolation='nearest')
+    fig.colorbar(cax, ax=ax, label='Completeness Degree',  fraction=0.046)
     tit = "Training Completeness"
     if title!='':tit=tit + '-' + title
     plt.title(tit)
@@ -240,6 +246,10 @@ def visualize_completeness(data, sort=True, title="", show=True, save=False):
     plt.ylabel('Client ID')
     plt.xlabel('Rounds')
     plt.tight_layout()
+    # plt.axis('equal')
+    # plt.ylim([0, data.shape[0]])
+    ax.set_aspect('auto', adjustable='datalim')
+    ax.set_ylim([0, data.shape[0]])
     if save: plt.savefig(f'{tit}.png', dpi=300, bbox_inches='tight')
     if show: plt.show()
     return tit
