@@ -21,3 +21,28 @@ Example::
 from flgo.benchmark.synthetic_regression.model import lr
 
 default_model = lr
+
+def visualize(generator, partitioner, task_path:str):
+    import matplotlib.pyplot as plt
+    import os
+    import numpy as np
+    from sklearn.manifold import TSNE
+    import matplotlib.cm as cm
+    local_models = generator.optimal_local
+    local_models = np.array(local_models)
+    local_models = local_models.reshape(local_models.shape[0], -1)
+    local_datas = generator.local_datas
+    local_data_sizes = np.array([len(d['y']) for d in local_datas])
+    local_data_sizes = local_data_sizes/local_data_sizes.max()
+    cmap = cm.Blues
+    colors = cmap(local_data_sizes)
+    tsne = TSNE(n_components=2, random_state=42)
+    data_2d = tsne.fit_transform(local_models)
+    plt.figure()
+    plt.scatter(data_2d[:, 0], data_2d[:, 1], c=colors, edgecolors='k', s=50)
+    plt.title(f't-SNE of (w*|b*) for Syn({generator.alpha},{generator.beta}, Imb.={generator.imbalance})')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.grid()
+    plt.savefig(os.path.join(task_path, 'res.png'))
+    plt.show()

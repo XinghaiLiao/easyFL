@@ -68,6 +68,7 @@ class TaskGenerator(BasicTaskGenerator):
             local_datas.append({'x': x_train, 'y':y_train})
         self.test_data = test_data
         self.local_datas = local_datas
+        self.optimal_local = optimal_local
         return X_split, y_split, optimal_local
 
     def get_task_name(self):

@@ -491,6 +491,8 @@ def gen_task(config={}, task_path:str= '', rawdata_path:str= '', seed:int=0, ove
                         partitioner = None
                 except:
                     partitioner = None
+    else:
+        partitioner = None
     # initialize task pipe
     if len(task_path) == 0: task_path = 'FLGoTask_' + uuid.uuid4().hex
     task_pipe = getattr(bmk_core, 'TaskPipe')(task_path)
