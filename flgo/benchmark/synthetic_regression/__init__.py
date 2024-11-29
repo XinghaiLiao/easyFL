@@ -32,11 +32,13 @@ def visualize(generator, partitioner, task_path:str):
     local_models = np.array(local_models)
     local_models = local_models.reshape(local_models.shape[0], -1)
     local_datas = generator.local_datas
+    n_clients = len(local_datas)
     local_data_sizes = np.array([len(d['y']) for d in local_datas])
     local_data_sizes = local_data_sizes/local_data_sizes.max()
     cmap = cm.Blues
     colors = cmap(local_data_sizes)
-    tsne = TSNE(n_components=2, random_state=42)
+    perplexity = max(n_clients/5., 1.) if n_clients<=30 else 30.
+    tsne = TSNE(n_components=2, random_state=42, perplexity=perplexity)
     data_2d = tsne.fit_transform(local_models)
     plt.figure()
     plt.scatter(data_2d[:, 0], data_2d[:, 1], c=colors, edgecolors='k', s=50)
