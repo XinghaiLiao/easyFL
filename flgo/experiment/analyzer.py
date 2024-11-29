@@ -79,6 +79,7 @@ def option2filter(option: dict):
         'connectivity': 'CN',
         'completeness': 'CP',
         'responsiveness': 'RS',
+        'simulator': 'SIM'
     }
 
 class TorchRecord:
@@ -309,7 +310,7 @@ class Selector:
             res.append(JsonRecord.create_group(groups[g]))
         return res, list(groups.keys())
 
-def load_records(task:str, algorithm, filter:dict={}, suffix='.json'):
+def load_records(task:str, algorithm, filter:dict={}, suffix='.json', legend_with=[]):
     r"""
     Load the records of training.
 
@@ -318,6 +319,7 @@ def load_records(task:str, algorithm, filter:dict={}, suffix='.json'):
         algorithm (list(str)|str): the algorithm name of the list of algorihtms' names
         filter (dict): filter records of undesirable settings, e.g., learning_rate, batch_size
         suffix (str): the suffix of record to be scan
+        legend_with (list(str)): enable legend of records
     Returns:
         the list of selected records
     """
@@ -345,7 +347,8 @@ def load_records(task:str, algorithm, filter:dict={}, suffix='.json'):
         else:
             warnings.warn(f"Condition '{k}' is invalid")
     if isinstance(algorithm, str): algorithm = [algorithm]
-    records = Selector({'task': task, 'header':algorithm, 'filter': new_filter}, suffix=suffix).all_records
+    legend_with = [key_map[le] for le in legend_with if le in key_map]
+    records = Selector({'task': task, 'header':algorithm, 'filter': new_filter, 'legend_with':legend_with}, suffix=suffix).all_records
     return records
 
 def delete_records(task:str, algorithm, filter:dict={}, suffix='.json'):
