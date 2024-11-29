@@ -5,7 +5,7 @@ import flgo.simulator.base as ss
 class DecLogger(BasicLogger):
     r"""Simple Logger. Only evaluating model performance on testing dataset and validation dataset."""
     def initialize(self):
-        """This method is used to record the stastic variables that won't change across rounds (e.g. local_movielens_recommendation data size)"""
+        """This method is used to record the stastic variables that won't change across rounds (e.g. local data size)"""
         for c in self.participants:
             self.output['client_datavol'].append(len(c.train_data))
 

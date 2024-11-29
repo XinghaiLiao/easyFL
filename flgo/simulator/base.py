@@ -543,7 +543,7 @@ def with_latency(communicate_with):
     @functools.wraps(communicate_with)
     def delayed_communicate_with(self, client_id, package):
         # Calculate latency for the target client
-        # Set local_movielens_recommendation model size of clients for computation cost estimation
+        # Set local model size of clients for computation cost estimation
         simulator = self.gv.simulator
         target_idx = simulator.id2idx([client_id])[0]
         # client_id = simulator.idx2id([target_idx])[0]
@@ -571,7 +571,7 @@ def with_latency(communicate_with):
         return res
     return delayed_communicate_with
 
-# local_movielens_recommendation training phase
+# local training phase
 def with_completeness(train):
     r"""
     The decorator to simulate the scene where the clients may upload incomplete model updates

@@ -186,8 +186,8 @@ class BasicClient(BasicParty):
 
     def train(self, model):
         r"""
-        Standard local_movielens_recommendation training procedure. Train the transmitted model with
-        local_movielens_recommendation training dataset.
+        Standard local training procedure. Train the transmitted model with
+        local training dataset.
 
         Args:
             model (FModule): the global model
@@ -221,7 +221,7 @@ class BasicClient(BasicParty):
         except Exception as e:
             self.data_loader = iter(self._train_loader)
             batch_data = next(self.data_loader)
-        # clear local_movielens_recommendation DataLoader when finishing local_movielens_recommendation training
+        # clear local DataLoader when finishing local training
         self.current_steps = (self.current_steps + 1) % self.num_steps
         if self.current_steps == 0:
             self.data_loader = None

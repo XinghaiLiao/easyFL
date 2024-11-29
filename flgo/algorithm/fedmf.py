@@ -91,7 +91,7 @@ class Client(BasicClient):
         """Return the decrypted item embeddings (i.e. the instance of ItemEmbedding())"""
         encrypted_item_vectors = received_pkg['encrypted_item_vectors']
         model = received_pkg['model']
-        # local_movielens_recommendation decrypt
+        # local decrypt
         if self.part<0:
             item_embeddings = encrypted_item_vectors
         else:

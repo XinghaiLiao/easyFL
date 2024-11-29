@@ -27,7 +27,7 @@ class AsyncServer(BasicServer):
             # original sample proposed by fedavg
             selected_clients = list(np.random.choice(all_clients, clients_per_round, replace=False)) if len(all_clients) > 0 else []
         elif 'md' in self.sample_option:
-            # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local_movielens_recommendation data sizes
+            # the default setting that is introduced by FedProx, where the clients are sampled with the probability in proportion to their local data sizes
             local_data_vols = [self.clients[cid].datavol for cid in all_clients]
             total_data_vol = sum(local_data_vols)
             p = np.array(local_data_vols) / total_data_vol

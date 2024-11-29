@@ -132,7 +132,7 @@ def read_option_from_command():
     parser.add_argument('--learning_rate_decay', help='learning rate decay for the training process;', type=float, default=0.998)
     parser.add_argument('--lr_scheduler', help='type of the global learning rate scheduler', type=str, default='-1')
     parser.add_argument('--early_stop', help='stop training if there is no improvement for no smaller than the maximum rounds', type=int, default=-1)
-    # hyper-parameters of local_movielens_recommendation training
+    # hyper-parameters of local training
     parser.add_argument('--num_epochs', help='number of epochs when clients locally train the model on data;', type=int, default=5)
     parser.add_argument('--num_steps', help='the number of local steps, which dominate num_epochs when setting num_steps>0', type=int, default=-1)
     parser.add_argument('--learning_rate', help='learning rate for inner solver;', type=float, default=0.1)

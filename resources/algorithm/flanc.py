@@ -99,8 +99,8 @@ class Client(fedavg.Client):
     @fuf.with_multi_gpus
     def train(self, model):
         r"""
-        Standard local_movielens_recommendation training procedure. Train the transmitted model with
-        local_movielens_recommendation training dataset.
+        Standard local training procedure. Train the transmitted model with
+        local training dataset.
 
         Args:
             model (FModule): the global model
