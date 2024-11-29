@@ -563,6 +563,8 @@ class Painter:
                 else:
                     if type(fig_config['fig_option'][option_name]) is str:
                         eval('plt.'+option_name+"('{}')".format(fig_config['fig_option'][option_name]))
+                    elif fig_config['fig_option'][option_name] is None:
+                        eval('plt.' + option_name + "()")
                     else:
                         eval('plt.' + option_name + "({})".format(fig_config['fig_option'][option_name]))
         filename = None
