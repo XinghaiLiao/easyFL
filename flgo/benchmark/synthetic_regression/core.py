@@ -2,8 +2,34 @@ from flgo.benchmark.base import *
 from flgo.benchmark.toolkits.cv.classification import GeneralCalculator
 from flgo.benchmark.toolkits.partition import BasicPartitioner
 import numpy as np
-TaskPipe = XYHorizontalTaskPipe
 TaskCalculator = GeneralCalculator
+
+class TaskPipe(XYHorizontalTaskPipe):
+    def load_data(self, running_time_option) -> dict:
+        test_data = self.feddata['server']['data']
+        test_data = self.TaskDataset(torch.tensor(test_data['x']), torch.tensor(test_data['y']))
+        local_datas = [self.TaskDataset(torch.tensor(self.feddata[cname]['data']['x']),
+                                        torch.tensor(self.feddata[cname]['data']['y'])) for cname in
+                       self.feddata['client_names']]
+        server_data_test, server_data_val = self.split_dataset(test_data, running_time_option['test_holdout'])
+        task_data = {'server': {'test': server_data_test, 'val': server_data_val}}
+        for key in self.feddata['server'].keys():
+            if key == 'data':
+                continue
+            task_data['server'][key] = self.feddata['server'][key]
+        for cid, cname in enumerate(self.feddata['client_names']):
+            cdata = local_datas[cid]
+            cdata_train, cdata_val = self.split_dataset(cdata, running_time_option['train_holdout'])
+            if running_time_option['local_test'] and cdata_val is not None:
+                cdata_val, cdata_test = self.split_dataset(cdata_val, running_time_option['local_test_ratio'])
+            else:
+                cdata_test = None
+            task_data[cname] = {'train': cdata_train, 'val': cdata_val, 'test': cdata_test, 'op':self.feddata[cname]['data']['w']}
+            for key in self.feddata[cname]:
+                if key == 'data':
+                    continue
+                task_data[cname][key] = self.feddata[cname][key]
+        return task_data
 
 class TaskGenerator(BasicTaskGenerator):
     def __init__(self, alpha=0.0, beta=0.0, num_clients=30, imbalance=0.0, mean_datavol=400, dimension=60, num_classes=10, *args, **kwargs):
@@ -65,7 +91,7 @@ class TaskGenerator(BasicTaskGenerator):
             y_test = y_split[cid][k:]
             test_data['x'].extend(x_test)
             test_data['y'].extend(y_test)
-            local_datas.append({'x': x_train, 'y':y_train})
+            local_datas.append({'x': x_train, 'y':y_train, 'w':np.concatenate((W[cid], np.expand_dims(b[cid], 0)), axis=0).tolist()})
         self.test_data = test_data
         self.local_datas = local_datas
         self.optimal_local = optimal_local

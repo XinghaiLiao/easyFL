@@ -28,6 +28,8 @@ Then the customized Logger will be used to record running-time variables.
 The Logger is also used to enable early stopping, where 'val_loss' must be a key in self.output if
 early stopping is enabled. We also provide several preset loggers like BasicLogger, SimpleLogger, TuneLogger.
 """
+import copy
+
 import torch.multiprocessing
 import sys, os, time, io, traceback, warnings, weakref, collections.abc
 import time
