@@ -20,7 +20,7 @@ class Server(BasicServer):
         # communicate with the candidates for their local loss
         losses = []
         for cid in candidate_set:
-            losses.append(self.clients[cid].test(self.model)['loss'])
+            losses.append(self.clients[cid].test(self.model, 'train')['loss'])
         # sort candidate set according to their local loss value, and choose the top-M highest ones
         sort_id = np.array(losses).argsort().tolist()
         sort_id.reverse()
