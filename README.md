@@ -1,6 +1,6 @@
 <center>
   <img src='docs/img/flgo_icon.png'  width="200"/>
-<\center>
+</center>
 <h1>FLGo: A Lightning Framework for Federated Learning</h1>
 
 <!-- [![article-red](https://img.shields.io/badge/pypi-v0.0.11-red)](https://pypi.org/project/flgo/)
