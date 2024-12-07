@@ -46,10 +46,11 @@ Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 
 <center>
 <!-- <img src="https://github.com/user-attachments/assets/230247bc-8fce-4821-901b-d0e22ca360fd" width=180/> -->
-Group Number: 838298386
-  <img src="https://github.com/user-attachments/assets/39070ba7-4752-46ec-b8b4-3d5591992595" width=180/>
 
+  <img src="https://github.com/user-attachments/assets/39070ba7-4752-46ec-b8b4-3d5591992595" width=180/>
 </center>
+
+Group Number: 838298386
 
 Tutorials in Chinese can be found [here](https://www.zhihu.com/column/c_1618319253936984064)
 # News
