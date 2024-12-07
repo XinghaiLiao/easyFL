@@ -1,4 +1,4 @@
-<div align="center">
+![75643018ae1c149a961e6ecbd71f267](https://github.com/user-attachments/assets/8b36e514-42be-45ab-bc25-20f98e600c48)<div align="center">
   <img src='docs/img/flgo_icon.png'  width="200"/>
 <h1>FLGo: A Lightning Framework for Federated Learning</h1>
 
@@ -44,10 +44,11 @@ git clone https://github.com/WwZzz/easyFL.git
 ## Join Us :smiley:
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 
-
 <center>
-<img src="https://github.com/user-attachments/assets/230247bc-8fce-4821-901b-d0e22ca360fd" width=180/>
-<img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=180/>
+<!-- <img src="https://github.com/user-attachments/assets/230247bc-8fce-4821-901b-d0e22ca360fd" width=180/> -->
+Group Number: 838298386
+  <img src="https://github.com/user-attachments/assets/39070ba7-4752-46ec-b8b4-3d5591992595" width=180/>
+
 </center>
 
 Tutorials in Chinese can be found [here](https://www.zhihu.com/column/c_1618319253936984064)
