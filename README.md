@@ -1,4 +1,4 @@
-![75643018ae1c149a961e6ecbd71f267](https://github.com/user-attachments/assets/8b36e514-42be-45ab-bc25-20f98e600c48)<div align="center">
+
   <img src='docs/img/flgo_icon.png'  width="200"/>
 <h1>FLGo: A Lightning Framework for Federated Learning</h1>
 
