@@ -44,11 +44,13 @@ git clone https://github.com/WwZzz/easyFL.git
 ## Join Us :smiley:
 Welcome to our FLGo's WeChat group/QQ Group for more technical discussion.
 
-
 <center>
-<img src="https://github.com/user-attachments/assets/230247bc-8fce-4821-901b-d0e22ca360fd" width=180/>
-<img src="https://github.com/WwZzz/easyFL/assets/20792079/66779b4c-2c63-4262-acac-baeccdefeb6c" width=180/>
+<!-- <img src="https://github.com/user-attachments/assets/230247bc-8fce-4821-901b-d0e22ca360fd" width=180/> -->
+
+  <img src="https://github.com/user-attachments/assets/39070ba7-4752-46ec-b8b4-3d5591992595" width=180/>
 </center>
+
+Group Number: 838298386
 
 Tutorials in Chinese can be found [here](https://www.zhihu.com/column/c_1618319253936984064)
 # News
