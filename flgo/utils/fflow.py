@@ -124,7 +124,7 @@ def read_option_from_command():
     """Training Options"""
     # basic settings
     # methods of server side for sampling and aggregating
-    parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='uniform_available')
+    parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='uniform')
     parser.add_argument('--aggregate', help='methods for aggregating models', type=str, choices=agg_list, default='other')
     # hyper-parameters of training in server side
     parser.add_argument('--num_rounds', help='number of communication rounds', type=int, default=20)
@@ -281,6 +281,34 @@ def gen_hierarchical_benchmark_from_file(benchmark:str, config_file:str, target_
             return '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
         # raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
     temp_path = os.path.join(flgo.benchmark.path, 'toolkits', 'hier')
+    shutil.copytree(temp_path, bmk_path)
+    shutil.copyfile(config_file, os.path.join(bmk_path, 'config.py'))
+    bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+    return bmk_module
+
+def gen_decentralized_benchmark_from_file(benchmark:str, config_file:str, target_path='.', overwrite:bool=False):
+    r"""
+        Create customized decentrazlied benchmarks from configurations. The configuration is a .py file that describes the task (e.g., train_data, get_model, data_to_device, eval, compute_loss)
+        and `val_data` and test_data are two optional variables in the configuration.
+    Args:
+        benchmark (str): the name of the benchmark
+        config_file (str): the path of the configuration file
+        target_path: (str): the path to store the benchmark
+        data_type (str): the type of dataset that should be in the list ['cv', 'nlp', 'graph', 'rec', 'series', 'tabular']
+        task_type (str): the type of the task (e.g. classification, regression...)
+        overwrite (bool): overwrite current benchmark if there already exists a benchmark of the same name
+    Returns:
+        bmk_module (str): the module name of the generated benchmark
+    """
+    if not os.path.exists(config_file): raise FileNotFoundError('File {} not found.'.format(config_file))
+    target_path = os.path.abspath(target_path)
+    bmk_path = os.path.join(target_path, benchmark)
+    if os.path.exists(bmk_path):
+        if not overwrite:
+            warnings.warn('There already exists a benchmark `{}`'.format(benchmark))
+            return '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))
+        # raise FileExistsError('Benchmark {} already exists'.format(bmk_path))
+    temp_path = os.path.join(flgo.benchmark.path, 'toolkits', 'dec')
     shutil.copytree(temp_path, bmk_path)
     shutil.copyfile(config_file, os.path.join(bmk_path, 'config.py'))
     bmk_module = '.'.join(os.path.relpath(bmk_path, os.getcwd()).split(os.path.sep))

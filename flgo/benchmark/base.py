@@ -238,22 +238,19 @@ class BasicTaskPipe(AbstractTaskPipe):
         elif scene=='decentralized':
             # init clients
             Client = algorithm.Client
-            clients = [Client(running_time_option) for _ in range(len(self.feddata['client_names']))]
+            clients = []
+            for _ in range(len(self.feddata['client_names'])):
+                clients.append(Client(running_time_option))
             for cid, c in enumerate(clients):
                 c.id = cid
                 c.name = self.feddata['client_names'][cid]
-            # init topology of clients
-            topology = self.feddata['topology']
-            for c in clients:
-                c.topology = topology
-            adjacent = self.feddata['adjacent']
-            for cid,c in enumerate(clients):
-                c.clients = [clients[k] for k,nid in enumerate(adjacent[cid]) if nid>0]
             # init protocol
             protocol = algorithm.Protocol(running_time_option)
             protocol.name = 'protocol'
-            # bind clients and server
-            protocol.clients = clients
+            protocol.register_objects(clients, 'clients')
+            protocol.num_clients = len(clients)
+            protocol.init_topology()
+            for c in clients: c.register_protocal(protocol)
             # return objects as list
             objects = [protocol]
             objects.extend(clients)

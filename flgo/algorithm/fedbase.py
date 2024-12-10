@@ -665,8 +665,7 @@ class BasicServer(BasicParty):
                 self.calculator.device = torch.device('cuda')
             else:
                 test_model = model
-            res = self.calculator.test(test_model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)),
-                                        num_workers=self.option['num_workers'], pin_memory=self.option['pin_memory'])
+            res = self.calculator.test(test_model, dataset, batch_size=min(self.option['test_batch_size'], len(dataset)), num_workers=self.option['num_workers'], pin_memory=self.option['pin_memory'])
             self.calculator.device = self.device
             model.to(self.device)
             return res
