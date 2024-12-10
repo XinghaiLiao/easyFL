@@ -124,7 +124,7 @@ def read_option_from_command():
     """Training Options"""
     # basic settings
     # methods of server side for sampling and aggregating
-    parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='uniform')
+    parser.add_argument('--sample', help='methods for sampling clients', type=str, choices=sample_list, default='uniform_available')
     parser.add_argument('--aggregate', help='methods for aggregating models', type=str, choices=agg_list, default='other')
     # hyper-parameters of training in server side
     parser.add_argument('--num_rounds', help='number of communication rounds', type=int, default=20)
