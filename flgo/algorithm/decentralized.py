@@ -135,12 +135,9 @@ class BasicProtocol(AbstractProtocol, fedbase.BasicParty):
         clients_for_iteration = self.get_clients_for_iteration()
         # compute next state for each client in Sc
         next_states = []
-        for c in tqdm(clients_for_iteration, desc='Iterate Clients', leave=False):
-            cnstate = c.update_state()
-            next_states.append(cnstate)
+        for c in tqdm(clients_for_iteration, desc='Iterate Clients', leave=False): next_states.append(c.update_state())
         # flush the states of all the clients
-        for c, cn in zip(clients_for_iteration, next_states):
-            c.state = copy.deepcopy(cn)
+        for c, cn in zip(clients_for_iteration, next_states): c.state = copy.deepcopy(cn)
         return
 
     @property
